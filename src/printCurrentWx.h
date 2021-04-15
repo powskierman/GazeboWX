@@ -9,6 +9,10 @@
     #include "myTime.h"
 
     void printCurrentWeather();
-    void sendNextion(String field, int num);
-    void sendHum(int hum);
+    int whichIcon(int ID);
+    int whichBigIcon(int _ID);
+    void sendNextion(String _field, String _type, int _num);
+    void endNextionCommand();
+ //   void sendWxIcon(String _field, int _num);
+ //   void sendHum(int hum);
 #endif
