@@ -98,6 +98,9 @@ void printCurrentWeather()
       Serial.print("Hourly summary  "); if (i < 10) Serial.print(" "); Serial.print(i);
       Serial.println();
       Serial.print("dt (time)        : "); Serial.print(strTime(hourly->dt[i]));
+      String hourlyTime = (strTime(hourly->dt[i]));
+      stringParser(hourlyTime);
+
       Serial.print("temp             : "); Serial.println(hourly->temp[i]);
  
       field = "temp" + String(i);
@@ -261,4 +264,41 @@ void endNextionCommand()
   Serial2.write(0xff);
   Serial2.write(0xff);
   Serial2.write(0xff);
+}
+void stringParser(String _hourlyTime){
+    char Buf[50];
+    _hourlyTime.toCharArray(Buf, 50);
+   const char s[2] = " ";
+   const char c[2] = ":";
+   char *token;
+   char *colon;
+   int i=0;
+   String hour = "";
+   
+   /* get the first token */
+   token = strtok(Buf, s);
+   
+   /* walk through other tokens */
+   while( token != NULL ) {
+
+    i++;
+//    printf( " %s\n", token );
+    if(i==4){
+        hour = token;
+        Serial.print("The hour is: ");
+        Serial.println(token);
+        colon = strtok(token, c);
+        Serial.print("The 2 digits are: ");
+        Serial.println(colon);
+        
+    }
+    
+      token = strtok(NULL, s);
+   }
+//   Serial.println(Buf);
+   
+//   return(0);
+
+  // do nothing while true:
+  while (true);
 }
