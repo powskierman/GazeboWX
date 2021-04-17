@@ -92,18 +92,29 @@ void printCurrentWeather()
 
   if (hourly)
   {
+    int i = 0;
+    int j = 0;
+
     Serial.println("############### Hourly weather  ###############\n");
-    for (int i = 0; i < MAX_HOURS; i++)
+    
+    for (i = 0; i < MAX_HOURS; i+=2)
     {
       Serial.print("Hourly summary  "); if (i < 10) Serial.print(" "); Serial.print(i);
       Serial.println();
       Serial.print("dt (time)        : "); Serial.print(strTime(hourly->dt[i]));
+      
       String hourlyTime = (strTime(hourly->dt[i]));
-      stringParser(hourlyTime);
+      int justHour = stringParser(hourlyTime);
+      Serial.print("Sending this hour to Nextion: ");
+      Serial.println(justHour);
+      field = "dt" + String(j);
+      type = "val";
+      num = justHour;
+      sendNextion(field,type, num);
 
       Serial.print("temp             : "); Serial.println(hourly->temp[i]);
  
-      field = "temp" + String(i);
+      field = "temp" + String(j);
       type = "val";
       num = (hourly->temp[i]);
       sendNextion(field,type, num);
@@ -112,7 +123,7 @@ void printCurrentWeather()
       Serial.print("pressure         : "); Serial.println(hourly->pressure[i]);
       Serial.print("humidity         : "); Serial.println(hourly->humidity[i]);
  
-      field = "humidity" + String(i);
+      field = "humidity" + String(j);
       type = "val";
       num = (hourly->humidity[i]);
       sendNextion(field,type, num);
@@ -130,7 +141,7 @@ void printCurrentWeather()
       ID = (hourly->id[i]);
       whichIcon(ID);
 
-      field = "wxIcon" + String(i);
+      field = "wxIcon" + String(j);
       type = "pic";
       num = ico;
       sendNextion(field,type, num);
@@ -142,6 +153,7 @@ void printCurrentWeather()
       Serial.print("pop              : "); Serial.println(hourly->pop[i]);
 
       Serial.println();
+      j++;
     }
   }
 
@@ -256,6 +268,7 @@ int whichIcon(int _ID)
 
 void sendNextion(String _field, String _type, int _num){
     String command = _field + "." + _type + "="+_num;
+    Serial.println(command);
     Serial2.print(command);
     endNextionCommand();
 }
@@ -265,15 +278,14 @@ void endNextionCommand()
   Serial2.write(0xff);
   Serial2.write(0xff);
 }
-void stringParser(String _hourlyTime){
+int stringParser(String _hourlyTime){
     char Buf[50];
     _hourlyTime.toCharArray(Buf, 50);
    const char s[2] = " ";
-   const char c[2] = ":";
    char *token;
-   char *colon;
    int i=0;
    String hour = "";
+   int justHour = 0;
    
    /* get the first token */
    token = strtok(Buf, s);
@@ -282,23 +294,13 @@ void stringParser(String _hourlyTime){
    while( token != NULL ) {
 
     i++;
-//    printf( " %s\n", token );
     if(i==4){
-        hour = token;
+         justHour = atoi(token);
         Serial.print("The hour is: ");
         Serial.println(token);
-        colon = strtok(token, c);
-        Serial.print("The 2 digits are: ");
-        Serial.println(colon);
-        
     }
     
       token = strtok(NULL, s);
    }
-//   Serial.println(Buf);
-   
-//   return(0);
-
-  // do nothing while true:
-  while (true);
+   return(justHour);
 }
