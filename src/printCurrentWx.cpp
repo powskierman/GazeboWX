@@ -1,5 +1,10 @@
 #include <Arduino.h>
 #include "printCurrentWx.h"
+#include "whichIcon.h"
+
+extern int ID;
+extern int num;
+extern int ico;
 
 // OpenWeather API Details, replace x's with your API key
 String api_key = "9794ca155b8a9487f51ed156635b1561"; // Obtain this from your OpenWeather account
@@ -12,9 +17,6 @@ String units = "metric";  // or "imperial"
 String language = "en";   // See notes tab
 String field = "";
 String type = "";
-int ID = 0;
-int num = 0;
-int ico = 3;
 
 OW_Weather ow; // Weather forecast library instance
 
@@ -209,57 +211,6 @@ void printCurrentWeather()
   delete hourly;
   delete daily;
 }
-int whichIcon(int _ID)
-  {
-      switch (_ID)
-      {
-      case 200 ... 209:{ico = 3;return ico;break;}
-      case 210:{ico = 25;return ico;break;}
-      case 211 ... 232:{ico = 3;return ico;break;}
-      case 300 ... 321:{ico = 14;return ico;break;}
-      case 500:{ico = 17;return ico;break;}
-      case 501:{ico = 16;return ico;break;}
-      case 502:{ico = 15;return ico;break;}
-      case 503 ... 531:{ico = 16;return ico;break;}
-      case 600:{ico = 24;return ico;break;}
-      case 601:{ico = 19;return ico;break;}
-      case 602:{ico = 20;return ico;break;}
-      case 603 ... 622:{ico = 19;return ico;break;}
-      case 701 ... 781:{ico = 19;return ico;break;}
-      case 800:{ico = 26;return ico;break;}
-      case 801:{ico = 22;return ico;break;}
-      case 802:{ico = 23;return ico;break;}
-      case 803 ... 804:{ico = 2;return ico;break;}
-
-    default:return ico;break;
-    }
-  }
- int whichBigIcon(int _ID)
-  {
-          switch (_ID)
-      {
-      case 200 ... 209:{ico = 28;return ico;break;}
-      case 210:{ico = 47;return ico;break;}
-      case 211 ... 232:{ico = 28;return ico;break;}
-      case 300 ... 321:{ico = 35;return ico;break;}
-      case 500:{ico = 38;return ico;break;}
-      case 501:{ico = 37;return ico;break;}
-      case 502:{ico = 36;return ico;break;}
-      case 503 ... 531:{ico = 37;return ico;break;}
-      case 600:{ico = 46;return ico;break;}
-      case 601:{ico = 40;return ico;break;}
-      case 602:{ico = 41;return ico;break;}
-      case 603 ... 622:{ico = 40;return ico;break;}
-      case 701 ... 781:{ico = 40;return ico;break;}
-      case 800:{ico = 43;return ico;break;}
-      case 801:{ico = 44;return ico;break;}
-      case 802:{ico = 45;return ico;break;}
-      case 803 ... 804:{ico = 27;return ico;break;}
-
-    default:return ico;break;
-    }
-
-  }
 
 void sendNextion(String _field, String _type, int _num){
     String command = _field + "." + _type + "="+_num;
@@ -272,6 +223,7 @@ void endNextionCommand()
   Serial2.write(0xff);
   Serial2.write(0xff);
 }
+
 int stringParser(String _hourlyTime){
     char Buf[50];
     _hourlyTime.toCharArray(Buf, 50);
