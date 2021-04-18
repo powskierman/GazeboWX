@@ -51,6 +51,7 @@ void printCurrentWeather()
     Serial.print("dt (time)        : "); Serial.print(strTime(current->dt));
     Serial.print("sunrise          : "); Serial.print(strTime(current->sunrise));
     Serial.print("sunset           : "); Serial.print(strTime(current->sunset));
+
     field = "temp";
     type = "val";
     num = (current->temp);
@@ -59,10 +60,12 @@ void printCurrentWeather()
     Serial.print("feels_like       : "); Serial.println(current->feels_like);
     Serial.print("pressure         : "); Serial.println(current->pressure);
     Serial.print("humidity         : "); Serial.println((current->humidity));
+
     field = "humidity";
     type = "val";
     num = (current->humidity);
     sendNextion(field,type,num);
+
     Serial.print("dew_point        : "); Serial.println(current->dew_point);
     Serial.print("uvi              : "); Serial.println(current->uvi);
     Serial.print("clouds           : "); Serial.println(current->clouds);
@@ -105,8 +108,7 @@ void printCurrentWeather()
       
       String hourlyTime = (strTime(hourly->dt[i]));
       int justHour = stringParser(hourlyTime);
-      Serial.print("Sending this hour to Nextion: ");
-      Serial.println(justHour);
+ 
       field = "dt" + String(j);
       type = "val";
       num = justHour;
@@ -193,9 +195,7 @@ void printCurrentWeather()
       Serial.print("snow             : "); Serial.println(daily->snow[i]);
       Serial.println();
       Serial.print("id               : "); Serial.println(daily->id[i]);
- //     ID = (daily->id[i]);
-//      whichIcon(ID);
-      Serial.print("main             : "); Serial.println(daily->main[i]);
+       Serial.print("main             : "); Serial.println(daily->main[i]);
       Serial.print("description      : "); Serial.println(daily->description[i]);
       Serial.print("icon             : "); Serial.println(daily->icon[i]);
       Serial.print("pop              : "); Serial.println(daily->pop[i]);
@@ -209,11 +209,6 @@ void printCurrentWeather()
   delete hourly;
   delete daily;
 }
-/*void sendWxIcon(String _field, int _num){
-    String command = _field + ".pic="+_num;
-    Serial2.print(command);
-    endNextionCommand();
-}*/
 int whichIcon(int _ID)
   {
       switch (_ID)
@@ -268,7 +263,6 @@ int whichIcon(int _ID)
 
 void sendNextion(String _field, String _type, int _num){
     String command = _field + "." + _type + "="+_num;
-    Serial.println(command);
     Serial2.print(command);
     endNextionCommand();
 }
@@ -292,15 +286,11 @@ int stringParser(String _hourlyTime){
    
    /* walk through other tokens */
    while( token != NULL ) {
-
     i++;
     if(i==4){
          justHour = atoi(token);
-        Serial.print("The hour is: ");
-        Serial.println(token);
-    }
-    
-      token = strtok(NULL, s);
+     }
+    token = strtok(NULL, s);
    }
    return(justHour);
 }
