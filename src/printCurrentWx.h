@@ -5,8 +5,6 @@
 
     #include <JSON_Decoder.h>
     #include <OpenWeather.h>
-    #include <iostream>
-    #include <sstream>
     #include "settings.h"
     #include "myTime.h"
     #include "whichIcon.h"

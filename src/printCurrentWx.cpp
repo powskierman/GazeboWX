@@ -54,16 +54,24 @@ void printCurrentWeather()
     Serial.print("sunrise          : "); Serial.print(strTime(current->sunrise));
     Serial.print("sunset           : "); Serial.print(strTime(current->sunset));
 
-    field = "temp";
+    Serial.print("temp             : "); Serial.println(current->temp);
+
+    field = "one.temp";
     type = "val";
     num = (current->temp);
     sendNextion(field,type,num);
 
     Serial.print("feels_like       : "); Serial.println(current->feels_like);
+
+    field = "zero.feels_like";
+    type = "val";
+    num = (current->feels_like);
+    sendNextion(field,type,num);
+
     Serial.print("pressure         : "); Serial.println(current->pressure);
     Serial.print("humidity         : "); Serial.println((current->humidity));
 
-    field = "humidity";
+    field = "one.humidity";
     type = "val";
     num = (current->humidity);
     sendNextion(field,type,num);
@@ -76,6 +84,13 @@ void printCurrentWeather()
     Serial.print("wind_gust        : "); Serial.println(current->wind_gust);
     Serial.print("wind_deg         : "); Serial.println(current->wind_deg);
     Serial.print("rain             : "); Serial.println(current->rain);
+
+    field = "zero.rain";
+    type = "val";
+    num = (current->rain);
+    sendNextion(field,type,num);
+
+
     Serial.print("snow             : "); Serial.println(current->snow);
     Serial.println();
     Serial.print("id               : "); Serial.println(current->id);
@@ -83,9 +98,15 @@ void printCurrentWeather()
     ID = (current->id);
     whichBigIcon(ID);
 
-    field = "wxIcon10";
+    field = "zero.now0";
     type = "pic";
     num = ico;
+    sendNextion(field,type,num);
+    type = "pic2";
+    sendNextion(field,type,num);
+    field = "one.now1";
+    sendNextion(field, type,num);
+    type = "pic2";
     sendNextion(field,type,num);
 
     Serial.print("main             : "); Serial.println(current->main);
@@ -97,8 +118,9 @@ void printCurrentWeather()
 
   if (hourly)
   {
-    int i = 0;
-    int j = 0;
+    int i = 0;  // counts by 2 for a bi-hourly forecast
+    int j = 0; // counts by 1 for incremental field names
+    const int k = 10; // adds 10 to field names for page 1 fields
 
     Serial.println("############### Hourly weather  ###############\n");
     
@@ -111,23 +133,32 @@ void printCurrentWeather()
       String hourlyTime = (strTime(hourly->dt[i]));
       int justHour = stringParser(hourlyTime);
  
-      field = "dt" + String(j);
+      field = "zero.dt" + String(j);
       type = "val";
       num = justHour;
+      sendNextion(field,type, num);
+      field = "one.dt" + String(j+k);
       sendNextion(field,type, num);
 
       Serial.print("temp             : "); Serial.println(hourly->temp[i]);
  
-      field = "temp" + String(j);
+      field = "one.temp" + String(j);
       type = "val";
       num = (hourly->temp[i]);
       sendNextion(field,type, num);
 
       Serial.print("feels_like       : "); Serial.println(hourly->feels_like[i]);
+
+      field = "zero.fl" + String(j);
+      type = "val";
+      num = (hourly->feels_like[i]);
+      sendNextion(field,type, num);
+
+
       Serial.print("pressure         : "); Serial.println(hourly->pressure[i]);
       Serial.print("humidity         : "); Serial.println(hourly->humidity[i]);
  
-      field = "humidity" + String(j);
+      field = "one.humidity" + String(j);
       type = "val";
       num = (hourly->humidity[i]);
       sendNextion(field,type, num);
@@ -138,6 +169,13 @@ void printCurrentWeather()
       Serial.print("wind_gust        : "); Serial.println(hourly->wind_gust[i]);
       Serial.print("wind_deg         : "); Serial.println(hourly->wind_deg[i]);
       Serial.print("rain             : "); Serial.println(hourly->rain[i]);
+
+      field = "zero.rain" + String(j);
+      type = "val";
+      num = (hourly->rain[i]);
+      sendNextion(field,type, num);
+
+
       Serial.print("snow             : "); Serial.println(hourly->snow[i]);
       Serial.println();
       Serial.print("id               : "); Serial.println(hourly->id[i]);
@@ -145,9 +183,11 @@ void printCurrentWeather()
       ID = (hourly->id[i]);
       whichIcon(ID);
 
-      field = "wxIcon" + String(j);
+      field = "zero.wxIcon" + String(j);
       type = "pic";
       num = ico;
+      sendNextion(field,type, num);
+      field = "one.wxIcon" + String(j+k);
       sendNextion(field,type, num);
 
 
@@ -211,19 +251,21 @@ void printCurrentWeather()
   delete hourly;
   delete daily;
 }
-
+// Sends data to Nextion
 void sendNextion(String _field, String _type, int _num){
     String command = _field + "." + _type + "="+_num;
+    Serial.println(command);
     Serial2.print(command);
     endNextionCommand();
 }
+// Nextion requires three 0xff as EOL
 void endNextionCommand()
 {
   Serial2.write(0xff);
   Serial2.write(0xff);
   Serial2.write(0xff);
-}
-
+  }
+// Parses the date and hour field for the time to retrieve hour.
 int stringParser(String _hourlyTime){
     char Buf[50];
     _hourlyTime.toCharArray(Buf, 50);
