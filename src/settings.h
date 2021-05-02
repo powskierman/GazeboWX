@@ -2,12 +2,13 @@
 #ifndef SETTINGS_H
     #include <WiFi.h>  //https://github.com/esp8266/Arduino
     #include <WiFiManager.h>  //https://github.com/tzapu/WiFiManager
+    #include <Time.h>
     #include "SPI.h"
     #include "DHT.h"
     #include "dhtModule.h"
     //#include "ap.h"
     #include "ntpServer.h"
-    //#include <TimeLib.h>
+ 
 
     #define SETTINGS_H
      // ========= User configured stuff starts here =========
