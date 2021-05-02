@@ -1,6 +1,11 @@
 #include "ntpServer.h"
 #include "ap.h"
 
+// NTP Servers and time zone:
+static const char ntpServerName[] = "us.pool.ntp.org";
+const int timeZone = -4;  // Eastern Daylight Time (USA)
+extern long currentTime;
+
 // configure UDP for NTP server
 
 WiFiUDP Udp;
@@ -16,7 +21,7 @@ time_t getNtpTime();
     Serial.println("Starting UDP");
     Udp.begin(localPort);
     Serial.print("Local port: ");
-    Serial.println(Udp.localPort());
+  //  Serial.println(Udp.localPort());
     Serial.println("waiting for sync");
     setSyncProvider(getNtpTime);
     setSyncInterval(300);
