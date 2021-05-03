@@ -1,22 +1,25 @@
-#include <Arduino.h>
 #ifndef SETTINGS_H
+#define SETTINGS_H
+    #include <Arduino.h>
+    
     #include <WiFi.h>  //https://github.com/esp8266/Arduino
     #include <DNSServer.h>
     #include <WiFiManager.h>  //https://github.com/tzapu/WiFiManager
     #include <EEPROM.h>
     #include <../include/time.h>
     #include <Time.h>
-    #include <arduino-timer.h>
-
+    #include <SimpleTimer.h>
+    #include <BlynkSimpleEsp32.h>
 
     #include "SPI.h"
     #include "DHT.h"
     #include "dhtModule.h"
     #include "ap.h"
     #include "ntpServer.h"
- 
+    #include "blynkModule.h"
 
-    #define SETTINGS_H
+    BlynkWifi Blynk(_blynkTransport);
+  
      // ========= User configured stuff starts here =========
     // Further configuration settings can be found in the
     // OpenWeather library "User_Setup.h" file
@@ -35,7 +38,10 @@
     #define LongPress 650 //How long SETTINGS button needs to be pressed to enter menu
     #define RelayPin 12
 
- 
+     // NTP Servers and time zone:
+    static const char ntpServerName[] = "us.pool.ntp.org";
+    const int timeZone = -4;  // Eastern Daylight Time (USA)
+    extern long currentTime;
 
              //Thermostat variables
     extern int TempDes;             //Desired temperature setting
@@ -72,9 +78,7 @@
     extern int TempOLED;
     extern int HumOLED;
 
- 
-
-
+    extern DHT dht;
  
     // =========  User configured stuff ends here  =========
     // =====================================================

@@ -1,4 +1,5 @@
 #include "thermostat.h"
+#include "blynkModule.h"
 
 long currentTime = 0;
 
@@ -34,7 +35,7 @@ void TempUpdate(){
   LastRead = ReadF;
   BadRead = 0;        // Reset counter for failed sensor reads
   
- // Blynk.virtualWrite(V0,TempAct); //Report the corrected t   
+  Blynk.virtualWrite(V0,TempAct); //Report the corrected t   
 
   // Decision algorithm for running HVAC
   if (!ManualRun && !ManualStop){   // Make sure it's not in one of the manual modes
@@ -75,7 +76,7 @@ void TempUpdate(){
 void Fan(boolean RunFan){
   FanState = RunFan;
 
-  /* Set the proper color for the Desired Temp gauge and ON/OFF LED
+  // Set the proper color for the Desired Temp gauge and ON/OFF LED
   //(red = heating, blue = cooling, white gauge or LED off = within desired range)
   if (Winter && FanState){
       Blynk.setProperty(V0, "color", BLYNK_RED);
@@ -88,10 +89,10 @@ void Fan(boolean RunFan){
     else{
       // Return widgets to their "off" state color, depending on theme
         Blynk.setProperty(V0, "color", NormalWidgetColor);      
-    }*/
+    }
     
   digitalWrite(RelayPin,!FanState); // Relay turns fan on with LOW input, off with HIGH
-  //Blynk.virtualWrite(V7,FanState * 1023);// fan "ON" LED on dashboard
+  Blynk.virtualWrite(V7,FanState * 1023);// fan "ON" LED on dashboard
 }
 
 
@@ -100,14 +101,14 @@ void KillManual(){
   ManualRun = false;
 }
 
-/*Match temp gauge to slider in Blynk app 
+//Match temp gauge to slider in Blynk app 
 BLYNK_WRITE(V3){
   TempDes = param.asInt();
   Blynk.virtualWrite(V1,TempDes);   
-}*/
+}
 
 // WRITE TimerOn function. determines beginning and end of Thermostat operation
-/*BLYNK_WRITE(V11){
+BLYNK_WRITE(V11){
  TimeInputParam t(param);
 
   // Process start time
@@ -186,4 +187,4 @@ void TimerStatus(){
     Blynk.virtualWrite(V14,BeginTimer);   
     Blynk.virtualWrite(V15,EndTimer);   
     Blynk.virtualWrite(V16,TimerOn);  
-}*/
+}

@@ -42,8 +42,8 @@ void GetPresets(){
     TempCorrection -= 10; // 10 was added at EEPROM save to account for negative values      
   }
 
-  //UsePerceivedTemp = EEPROM.read(5);
-  //PerceivedTemp(UsePerceivedTemp);
+  UsePerceivedTemp = EEPROM.read(5);
+  PerceivedTemp(UsePerceivedTemp);
  
   Winter = EEPROM.read(4);
   Hysteresis_W = EEPROM.read(1);
@@ -64,6 +64,6 @@ void GetPresets(){
  
   if ((TempDes < 50) || (TempDes > 80)) TempDes = 20;
   
-  //int DashboardColor = EEPROM.read(6);
-  //DashColor(DashboardColor);
+  int DashboardColor = EEPROM.read(6);
+  DashColor(DashboardColor);
 }

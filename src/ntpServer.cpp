@@ -1,11 +1,6 @@
 #include "ntpServer.h"
 #include "ap.h"
 
-// NTP Servers and time zone:
-static const char ntpServerName[] = "us.pool.ntp.org";
-const int timeZone = -4;  // Eastern Daylight Time (USA)
-extern long currentTime;
-
 // configure UDP for NTP server
 
 WiFiUDP Udp;
