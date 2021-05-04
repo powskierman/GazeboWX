@@ -1,49 +1,35 @@
 #ifndef SETTINGS_H
 #define SETTINGS_H
+
     #include <Arduino.h>
-    
-    #include <WiFi.h>  //https://github.com/esp8266/Arduino
+
+    #include <ESP8266WiFi.h>  //https://github.com/esp8266/Arduino
+    #include <BlynkSimpleEsp8266.h>
+    #include <ESP8266WebServer.h>
     #include <DNSServer.h>
     #include <WiFiManager.h>  //https://github.com/tzapu/WiFiManager
-    #include <EEPROM.h>
-    #include <../include/time.h>
-    #include <Time.h>
-    #include <SimpleTimer.h>
-    #include <BlynkSimpleEsp32.h>
-
-    #include "SPI.h"
     #include "DHT.h"
-    #include "dhtModule.h"
-    #include "ap.h"
-    #include "ntpServer.h"
+    #include <EEPROM.h>
+    #include <Adafruit_GFX.h>
+    #include <Adafruit_SSD1306.h>
+    #include "Wire.h"
+    #include <TimeLib.h>
+    #include <ESP8266WiFi.h>
+    #include <WiFiUdp.h>
+
     #include "blynkModule.h"
-
-    BlynkWifi Blynk(_blynkTransport);
-  
-     // ========= User configured stuff starts here =========
-    // Further configuration settings can be found in the
-    // OpenWeather library "User_Setup.h" file
-
-    #define RXD2 16
-    #define TXD2 17
-
-    #define TIME_OFFSET 1UL * (-4*3600UL) // UTC + 0 hour
-
-    // Change to suit your WiFi router
-    #define WIFI_SSID     "3Sisters"
-    #define WIFI_PASSWORD "seawolfpilot01"
 
     #define UpdateFrequency 10000 //How often a new temperature will be read
     #define MenuTimeOut 7000 //Menu timeout from inactivity
     #define LongPress 650 //How long SETTINGS button needs to be pressed to enter menu
     #define RelayPin 12
 
-     // NTP Servers and time zone:
+    // NTP Servers and time zone:
     static const char ntpServerName[] = "us.pool.ntp.org";
     const int timeZone = -4;  // Eastern Daylight Time (USA)
     extern long currentTime;
 
-             //Thermostat variables
+         //Thermostat variables
     extern int TempDes;             //Desired temperature setting
     extern int PreviousTempDes;
     extern int TempAct;             //Actual temperature, as measured by the DHT11 sensor
@@ -79,7 +65,4 @@
     extern int HumOLED;
 
     extern DHT dht;
- 
-    // =========  User configured stuff ends here  =========
-    // =====================================================
 #endif

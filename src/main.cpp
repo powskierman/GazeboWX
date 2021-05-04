@@ -16,13 +16,15 @@
   #include <WiFiClientSecure.h>
 #else // ESP32
   #include <WiFi.h>
+  #include "settings.h"
+  #include "timers.h"
 #endif
 
 // Just using this library for unix time conversion
 #include "settings.h"
 #include "printCurrentWx.h"
 
-
+SimpleTimer timer;
 
 void setup() { 
   Serial.begin(250000); // Fast to stop it holding up the stream
@@ -42,7 +44,7 @@ void setup() {
 }
 
 void loop() {
-
+   timer.run();
   printCurrentWeather();
 
   // We can make 1000 requests a day
