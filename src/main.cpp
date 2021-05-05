@@ -66,7 +66,6 @@ BlynkWifi Blynk(_blynkTransport);
 #include "settings.h"
 #include "eepromPresets.h"
 #include "thermostat.h"
-#include "oled.h"
 #include "blynkModule.h"
 #include "dhtModule.h"
 #include "timers.h"
@@ -91,13 +90,15 @@ void ntpService();
   #include <WiFiClientSecure.h>
 #else // ESP32
   #include <WiFi.h>
+  #include "settings.h"
+  #include "timers.h"
 #endif
 
 // Just using this library for unix time conversion
 #include "settings.h"
 #include "printCurrentWx.h"
 
-
+SimpleTimer timer;
 
 
 void setup() {
@@ -145,9 +146,8 @@ time_t prevDisplay = 0; // when the digital clock was displayed
 // Main loop
 void loop() {
   Blynk.run();
-  CallTimer();
-
-    printCurrentWeather();
+  timer.run();
+  printCurrentWeather();
 
   // We can make 1000 requests a day
   delay(5 * 60 * 1000); // Every 5 minutes = 288 requests per day
