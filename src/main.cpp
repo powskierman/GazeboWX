@@ -1,5 +1,5 @@
 /**************************************************************************** 
- *  Controls fireplace in Gazebo. and fetch the Weather Forecast
+ *  Controls fireplace in Gazebo and fetch the Weather Forecast
  *  from OpenWeather. A fork from the library here:
  *  https://github.com/Bodmer/OpenWeather 
  *  Sign up for a key and read API configuration info here:
@@ -61,7 +61,6 @@
 *****************************************************************************
 */
 #include <BlynkSimpleEsp32.h>
-BlynkWifi Blynk(_blynkTransport);
 
 #include "settings.h"
 #include "eepromPresets.h"
@@ -98,11 +97,13 @@ void ntpService();
 #include "settings.h"
 #include "printCurrentWx.h"
 
-SimpleTimer timer;
+BlynkWifi Blynk(_blynkTransport);
 
+//SimpleTimer timer;
+BlynkTimer timer;
 
 void setup() {
-  Serial.begin(250000); // Fast to stop it holding up the stream
+  Serial.begin(115200); // Fast to stop it holding up the stream
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
 
   Serial.printf("\n\nConnecting to %s\n", WIFI_SSID);
@@ -118,10 +119,9 @@ void setup() {
   Serial.print("Connected\n");
 
   BlynkInit();
-  SetDisplay();
-  intervals();
   apInit();
-  startDht();
+
+
  
   //Initialize the fan relay. Mine is "off" when the relay is set HIGH.
   pinMode(RelayPin,OUTPUT); 
@@ -139,16 +139,17 @@ void setup() {
   PreviousTempDes = TempDes; 
   
   MenuReset();
+  intervals();
+  getTime();
+  startDht();
+  delay(1500);
+  printCurrentWeather();
  }
 
-time_t prevDisplay = 0; // when the digital clock was displayed
+//time_t prevDisplay = 0; // when the digital clock was displayed
   
 // Main loop
 void loop() {
   Blynk.run();
   timer.run();
-  printCurrentWeather();
-
-  // We can make 1000 requests a day
-  delay(5 * 60 * 1000); // Every 5 minutes = 288 requests per day
 }

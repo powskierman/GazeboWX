@@ -8,7 +8,7 @@
     #include <EEPROM.h>
     #include <../include/time.h>
     #include <Time.h>
-    #include <SimpleTimer.h>
+    //#include <SimpleTimer.h>
     #include <BlynkSimpleEsp32.h>
 
     #include "SPI.h"
@@ -18,7 +18,7 @@
     #include "ntpServer.h"
     #include "blynkModule.h"
 
-    BlynkWifi Blynk(_blynkTransport);
+    //BlynkWifi Blynk(_blynkTransport);
   
      // ========= User configured stuff starts here =========
     // Further configuration settings can be found in the
@@ -30,7 +30,7 @@
     #define TIME_OFFSET 1UL * (-4*3600UL) // UTC + 0 hour
 
     // Change to suit your WiFi router
-    #define WIFI_SSID     "3Sisters"
+    #define WIFI_SSID     "NH2"
     #define WIFI_PASSWORD "seawolfpilot01"
 
     #define UpdateFrequency 10000 //How often a new temperature will be read

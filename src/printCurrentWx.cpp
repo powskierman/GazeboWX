@@ -87,7 +87,7 @@ void printCurrentWeather()
 
     field = "zero.rain";
     type = "val";
-    num = (current->rain);
+    num = (current->clouds);
     sendNextion(field,type,num);
 
 
@@ -102,11 +102,9 @@ void printCurrentWeather()
     type = "pic";
     num = ico;
     sendNextion(field,type,num);
-    type = "pic2";
-    sendNextion(field,type,num);
     field = "one.now1";
     sendNextion(field, type,num);
-    type = "pic2";
+    type = "pic";
     sendNextion(field,type,num);
 
     Serial.print("main             : "); Serial.println(current->main);
@@ -172,7 +170,7 @@ void printCurrentWeather()
 
       field = "zero.rain" + String(j);
       type = "val";
-      num = (hourly->rain[i]);
+      num = ((hourly->pop[i]) * 100);
       sendNextion(field,type, num);
 
 

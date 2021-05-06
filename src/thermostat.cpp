@@ -9,7 +9,8 @@ long currentTime = 0;
 void TempUpdate(){
 
   float ReadF = dht.readTemperature(); //Get a new reading from the temp sensor
-  
+  Serial.print("DHT Temp: ");
+  Serial.println(ReadF);
     
   if (isnan(ReadF)) {
     BadRead++;

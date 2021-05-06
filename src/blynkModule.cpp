@@ -1,14 +1,17 @@
 #include "blynkModule.h"
-
+#define BLYNK_DEBUG // Optional
 int MenuTimer;
 
-BlynkTimer timer;
+extern BlynkTimer timer;
 
 // Initialize blynk server IP and Auth
 void BlynkInit(){
+  Serial.println("At BlynkInit");
 char PiServerIP[] = "192.168.0.10";
-char auth[] = "181924b6c8b34d439071c2e9a19f8652"; // Blynk token "YourAuthToken"
+char auth[] = "bDqc4Ylu8-F_8xga1Gl-XDnLwt8MQjRY"; // Blynk token "YourAuthToken"
 Blynk.config(auth, PiServerIP, 8080);
+delay(100);
+Blynk.connect();
 }
 
 String NormalWidgetColor = BLYNK_WHITE;

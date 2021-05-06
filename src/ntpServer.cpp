@@ -16,7 +16,7 @@ time_t getNtpTime();
     Serial.println("Starting UDP");
     Udp.begin(localPort);
     Serial.print("Local port: ");
-  //  Serial.println(Udp.localPort());
+    //Serial.println(Udp.localPort());
     Serial.println("waiting for sync");
     setSyncProvider(getNtpTime);
     setSyncInterval(300);
