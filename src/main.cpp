@@ -94,7 +94,6 @@ void ntpService();
 #endif
 
 // Just using this library for unix time conversion
-#include "settings.h"
 #include "printCurrentWx.h"
 
 BlynkWifi Blynk(_blynkTransport);

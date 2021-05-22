@@ -20,4 +20,5 @@ MenuTimer = timer.setInterval(15000L, MenuReset);// 15 second inactivity timeout
 timer.setInterval(10000L, digitalClockDisplay);// Display digital clock every 10 seconds
 timer.setInterval(5000L, TimerStatus);//Check timer status to determine if we are within active period
 timer.setInterval(300000L,printCurrentWeather);
+timer.setInterval(5000L, ActualTemp); //Report the corrected t   
 }

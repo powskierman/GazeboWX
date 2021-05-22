@@ -131,23 +131,23 @@ void printCurrentWeather()
       String hourlyTime = (strTime(hourly->dt[i]));
       int justHour = stringParser(hourlyTime);
  
-      field = "zero.dt" + String(j);
+      field = "one.dt" + String(j);
       type = "val";
       num = justHour;
       sendNextion(field,type, num);
-      field = "one.dt" + String(j+k);
+      field = "two.dt" + String(j+k);
       sendNextion(field,type, num);
 
       Serial.print("temp             : "); Serial.println(hourly->temp[i]);
  
-      field = "one.temp" + String(j);
+      field = "two.temp" + String(j);
       type = "val";
       num = (hourly->temp[i]);
       sendNextion(field,type, num);
 
       Serial.print("feels_like       : "); Serial.println(hourly->feels_like[i]);
 
-      field = "zero.fl" + String(j);
+      field = "one.fl" + String(j);
       type = "val";
       num = (hourly->feels_like[i]);
       sendNextion(field,type, num);
@@ -156,7 +156,7 @@ void printCurrentWeather()
       Serial.print("pressure         : "); Serial.println(hourly->pressure[i]);
       Serial.print("humidity         : "); Serial.println(hourly->humidity[i]);
  
-      field = "one.humidity" + String(j);
+      field = "two.humidity" + String(j);
       type = "val";
       num = (hourly->humidity[i]);
       sendNextion(field,type, num);
@@ -168,7 +168,7 @@ void printCurrentWeather()
       Serial.print("wind_deg         : "); Serial.println(hourly->wind_deg[i]);
       Serial.print("rain             : "); Serial.println(hourly->rain[i]);
 
-      field = "zero.rain" + String(j);
+      field = "one.rain" + String(j);
       type = "val";
       num = ((hourly->pop[i]) * 100);
       sendNextion(field,type, num);
@@ -181,11 +181,11 @@ void printCurrentWeather()
       ID = (hourly->id[i]);
       whichIcon(ID);
 
-      field = "zero.wxIcon" + String(j);
+      field = "one.wxIcon" + String(j);
       type = "pic";
       num = ico;
       sendNextion(field,type, num);
-      field = "one.wxIcon" + String(j+k);
+      field = "two.wxIcon" + String(j+k);
       sendNextion(field,type, num);
 
 

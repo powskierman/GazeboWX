@@ -62,7 +62,7 @@ void GetPresets(){
   EEPROM.get(10,BeginTimer);
   EEPROM.get(16,EndTimer);
  
-  if ((TempDes < 50) || (TempDes > 80)) TempDes = 20;
+  if ((TempDes < 10) || (TempDes > 30)) TempDes = 20;
   
   int DashboardColor = EEPROM.read(6);
   DashColor(DashboardColor);

@@ -11,6 +11,7 @@ void TempUpdate(){
   float ReadF = dht.readTemperature(); //Get a new reading from the temp sensor
   Serial.print("DHT Temp: ");
   Serial.println(ReadF);
+  Blynk.virtualWrite(V0,TempAct); //Report the corrected t   
     
   if (isnan(ReadF)) {
     BadRead++;
@@ -43,10 +44,14 @@ void TempUpdate(){
     // If I'm home, run the algorithm
     if (Home){
       if (Winter){
+        Serial.println("I'm home and it's winter.");
         //If I'm home, it's Winter, and the temp is too low, turn the relay ON
-        if (TimerOn){  //If we're within the schedule
+        if (TimerOn){  
+          Serial.println("Timer is on."); //If we're within the schedule
           if (TempAct < TempDes){ //If the actual temp is lower than desired temp
           Fan(1);
+          Serial.print("Fan is ");
+          Serial.println(1);
         }
         //Turn it off when the space is heated to the desired temp + a few degrees
         else if (TempAct >= (TempDes + Hysteresis_W)) {
@@ -92,7 +97,7 @@ void Fan(boolean RunFan){
         Blynk.setProperty(V0, "color", NormalWidgetColor);      
     }
     
-  digitalWrite(RelayPin,!FanState); // Relay turns fan on with LOW input, off with HIGH
+  digitalWrite(RelayPin,FanState); // Relay turns fan on with LOW input, off with HIGH
   Blynk.virtualWrite(V7,FanState * 1023);// fan "ON" LED on dashboard
 }
 
@@ -188,4 +193,9 @@ void TimerStatus(){
     Blynk.virtualWrite(V14,BeginTimer);   
     Blynk.virtualWrite(V15,EndTimer);   
     Blynk.virtualWrite(V16,TimerOn);  
+}
+void ActualTemp(){
+  Blynk.virtualWrite(V0,TempAct);
+  Serial.print("DHT22 temp: ");
+  Serial.println(TempAct);
 }

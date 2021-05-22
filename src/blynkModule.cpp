@@ -8,14 +8,14 @@ extern BlynkTimer timer;
 void BlynkInit(){
   Serial.println("At BlynkInit");
 char PiServerIP[] = "192.168.0.10";
-char auth[] = "bDqc4Ylu8-F_8xga1Gl-XDnLwt8MQjRY"; // Blynk token "YourAuthToken"
+char auth[] = "efiZIlQ3Wgth_vgKeNGCS1jPIu1GCmOo"; // Blynk token "YourAuthToken"
 Blynk.config(auth, PiServerIP, 8080);
 delay(100);
 Blynk.connect();
 }
 
-String NormalWidgetColor = BLYNK_WHITE;
-String PreviousWidgetColor = BLYNK_WHITE;
+String NormalWidgetColor = BLYNK_GREEN;
+String PreviousWidgetColor = BLYNK_GREEN;
 
 // Reset the Menu at startup or after timing out from inactivity
 void MenuReset(){

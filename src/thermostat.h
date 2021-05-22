@@ -6,4 +6,5 @@
     void Fan(boolean RunFan);
     void KillManual();
     void TimerStatus();
+    void ActualTemp();
 #endif
