@@ -1,13 +1,14 @@
- #include <Arduino.h>
-//    #include <ArduinoOTA.h>
+#include <Arduino.h>
+#include "nh_ota.h"
 
- #include "OTA.h"
- 
-  // Port defaults to 3232
+const char* hostName = "Gazebo";
+
+void ota(){
+    // Port defaults to 3232
   // ArduinoOTA.setPort(3232);
 
   // Hostname defaults to esp3232-[MAC]
-  ArduinoOTA.setHostname("GazXTest2");
+  ArduinoOTA.setHostname(hostName);
 
   // No authentication by default
   // ArduinoOTA.setPassword("admin");
@@ -15,8 +16,8 @@
   // Password can be set with it's md5 value as well
   // MD5(admin) = 21232f297a57a5a743894a0e4a801fc3
   // ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
-
-  ArduinoOTA
+  
+ ArduinoOTA
     .onStart([]() {
       String type;
       if (ArduinoOTA.getCommand() == U_FLASH)
@@ -41,3 +42,10 @@
       else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
       else if (error == OTA_END_ERROR) Serial.println("End Failed");
     });
+
+     ArduinoOTA.begin();
+
+  Serial.println("Ready");
+  Serial.print("IP address: ");
+  Serial.println(WiFi.localIP());
+}

@@ -8,7 +8,7 @@ extern BlynkTimer timer;
 void BlynkInit(){
   Serial.println("At BlynkInit");
 char PiServerIP[] = "192.168.0.10";
-char auth[] = "efiZIlQ3Wgth_vgKeNGCS1jPIu1GCmOo"; // Blynk token "YourAuthToken"
+char auth[] = "181924b6c8b34d439071c2e9a19f8652"; // Blynk token "YourAuthToken"
 Blynk.config(auth, PiServerIP, 8080);
 delay(100);
 Blynk.connect();

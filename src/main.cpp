@@ -70,6 +70,7 @@
 #include "timers.h"
 #include "ap.h"
 #include "ntpServer.h"
+#include "nh_ota.h"
 
 void TempUpdate();
 void TimerStatus();
@@ -77,6 +78,9 @@ void Fan(boolean RunFan);
 void KillManual();
 void intervals();
 void ntpService();
+void connectToWifi();
+void ota();
+
 
 // You can change the number of hours and days for the forecast in the
 // "User_Setup.h" file inside the OpenWeather library folder.
@@ -119,8 +123,7 @@ void setup() {
 
   BlynkInit();
   apInit();
-
-
+  ota();
  
   //Initialize the fan relay. Mine is "off" when the relay is set HIGH.
   pinMode(RelayPin,OUTPUT); 
@@ -149,6 +152,7 @@ void setup() {
   
 // Main loop
 void loop() {
+  ArduinoOTA.handle();
   Blynk.run();
   timer.run();
 }
