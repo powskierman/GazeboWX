@@ -79,7 +79,8 @@
     extern int HumOLED;
 
     extern DHT dht;
- 
+    
+    void checkWifi();
     // =========  User configured stuff ends here  =========
     // =====================================================
 #endif
