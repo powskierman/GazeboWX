@@ -78,7 +78,9 @@ void Fan(boolean RunFan);
 void KillManual();
 void intervals();
 void ntpService();
-void connectToWifi();
+//void connectToWifi();
+void checkWifi();
+
 void ota();
 
 
@@ -124,6 +126,7 @@ void setup() {
   BlynkInit();
   apInit();
   ota();
+  checkWifi();
  
   //Initialize the fan relay. Mine is "off" when the relay is set HIGH.
   pinMode(RelayPin,OUTPUT); 
@@ -155,4 +158,11 @@ void loop() {
   ArduinoOTA.handle();
   Blynk.run();
   timer.run();
+}
+void checkWifi(){
+    // if WiFi is down, try reconnecting every CHECK_WIFI_TIME seconds
+  if (WiFi.status() != WL_CONNECTED){
+    Serial.println("Disconnected from WIFI.  Rebooting...");
+    ESP.restart();
+  }
 }
