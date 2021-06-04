@@ -57,7 +57,7 @@ void GetPresets(){
   }
   
   TempDes = EEPROM.read(3);
-
+ 
 // Read schedule from eeprom
   EEPROM.get(10,BeginTimer);
   EEPROM.get(16,EndTimer);

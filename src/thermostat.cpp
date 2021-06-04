@@ -2,6 +2,9 @@
 #include "blynkModule.h"
 
 long currentTime = 0;
+int TempAvg;
+
+EasyNex myNex(Serial2);
 
 //*********************** Thermostat Functions **********************************
 
@@ -11,8 +14,8 @@ void TempUpdate(){
   float ReadF = dht.readTemperature(); //Get a new reading from the temp sensor
   Serial.print("DHT Temp: ");
   Serial.println(ReadF);
-  Blynk.virtualWrite(V0,TempAct); //Report the corrected t   
-    
+  Blynk.virtualWrite(V0,TempAct); //Report the corrected temperature
+      
   if (isnan(ReadF)) {
     BadRead++;
     return;
@@ -20,7 +23,7 @@ void TempUpdate(){
 
   //To compensate for some instability in the DHT11, the corrected temperature is
   //averaged with previous read, and any change is limited to 1 degree at a time. 
-  int TempAvg = int((ReadF + LastRead + (2 * TempCorrection))/2);
+  TempAvg = int((ReadF + LastRead + (2 * TempCorrection))/2);
 
   // Use "perceived temperature" offset (when turned on in SETTINGS)
   if(UsePerceivedTemp == true && Winter == false && ReadF > 20 && Humidity > 40){
@@ -37,7 +40,9 @@ void TempUpdate(){
   LastRead = ReadF;
   BadRead = 0;        // Reset counter for failed sensor reads
   
-  Blynk.virtualWrite(V0,TempAct); //Report the corrected t   
+  Blynk.virtualWrite(V0,TempAct); //Report the corrected t 
+  myNex.writeNum("three.n1.val",ReadF + TempCorrection);     
+  
 
   // Decision algorithm for running HVAC
   if (!ManualRun && !ManualStop){   // Make sure it's not in one of the manual modes
@@ -46,6 +51,7 @@ void TempUpdate(){
       if (Winter){
         Serial.println("I'm home and it's winter.");
         //If I'm home, it's Winter, and the temp is too low, turn the relay ON
+ 
         if (TimerOn){  
           Serial.println("Timer is on."); //If we're within the schedule
           if (TempAct < TempDes){ //If the actual temp is lower than desired temp
@@ -110,7 +116,9 @@ void KillManual(){
 //Match temp gauge to slider in Blynk app 
 BLYNK_WRITE(V3){
   TempDes = param.asInt();
-  Blynk.virtualWrite(V1,TempDes);   
+  Blynk.virtualWrite(V1,TempDes);
+  myNex.writeNum("three.n0.val",TempDes);
+  myNex.writeNum("three.n1.val",TempAvg);   
 }
 
 // WRITE TimerOn function. determines beginning and end of Thermostat operation
@@ -198,4 +206,18 @@ void ActualTemp(){
   Blynk.virtualWrite(V0,TempAct);
   Serial.print("DHT22 temp: ");
   Serial.println(TempAct);
+}
+void trigger1(){
+  int previousTempdes = 0;
+  TempDes = myNex.readNumber("three.Slider0.val");
+  if(TempDes != 777777){
+    previousTempdes = TempDes;
+  }
+    else if(TempDes == 777777)
+    {
+      TempDes = previousTempdes;
+    }
+    
+  Blynk.virtualWrite(V3,TempDes);
+  Blynk.virtualWrite(V1,TempDes);
 }

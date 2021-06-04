@@ -55,6 +55,8 @@ time_t getNtpTime()
     }
   }
   Serial.println("No NTP Response :-(");
+  delay(100);
+  time_t getNtpTime();
   return 0; // return 0 if unable to get the time
 }
 

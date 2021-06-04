@@ -8,8 +8,8 @@
     #include <EEPROM.h>
     #include <../include/time.h>
     #include <Time.h>
-    //#include <SimpleTimer.h>
     #include <BlynkSimpleEsp32.h>
+    #include <EasyNextionLibrary.h>
 
     #include "SPI.h"
     #include "DHT.h"
@@ -61,7 +61,8 @@
     extern int Hysteresis_S;
     extern int TempCorrection;       //Used to adjust readings, if the sensor needs calibration
     extern boolean UsePerceivedTemp; // Use humidity-adjusted perceived temperature, instead of actual temperature
-
+    extern int TempAvg;              // TempAct averaged and corrected for TempCorrection
+    extern int TempCorrection;
         // Current condition variables
     extern boolean Winter; 
     extern boolean Home;
@@ -79,7 +80,8 @@
     extern int HumOLED;
 
     extern DHT dht;
-    
+    extern EasyNex myNex;
+
     void checkWifi();
     // =========  User configured stuff ends here  =========
     // =====================================================

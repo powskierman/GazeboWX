@@ -56,10 +56,10 @@ void printCurrentWeather()
 
     Serial.print("temp             : "); Serial.println(current->temp);
 
-    field = "one.temp";
+    /*field = "one.temp";
     type = "val";
     num = (current->temp);
-    sendNextion(field,type,num);
+    sendNextion(field,type,num);*/
 
     Serial.print("feels_like       : "); Serial.println(current->feels_like);
 
@@ -71,10 +71,10 @@ void printCurrentWeather()
     Serial.print("pressure         : "); Serial.println(current->pressure);
     Serial.print("humidity         : "); Serial.println((current->humidity));
 
-    field = "one.humidity";
+    /*field = "one.humidity";
     type = "val";
     num = (current->humidity);
-    sendNextion(field,type,num);
+    sendNextion(field,type,num);*/
 
     Serial.print("dew_point        : "); Serial.println(current->dew_point);
     Serial.print("uvi              : "); Serial.println(current->uvi);
@@ -102,10 +102,14 @@ void printCurrentWeather()
     type = "pic";
     num = ico;
     sendNextion(field,type,num);
-    field = "one.now1";
+    field = "zero.now0";
+    type = "pic2";
+    num = ico;
+    sendNextion(field,type,num);
+    /*field = "one.now1";
     sendNextion(field, type,num);
     type = "pic";
-    sendNextion(field,type,num);
+    sendNextion(field,type,num);*/
 
     Serial.print("main             : "); Serial.println(current->main);
     Serial.print("description      : "); Serial.println(current->description);
@@ -262,6 +266,7 @@ void endNextionCommand()
   Serial2.write(0xff);
   Serial2.write(0xff);
   Serial2.write(0xff);
+  delay(50);
   }
 // Parses the date and hour field for the time to retrieve hour.
 int stringParser(String _hourlyTime){

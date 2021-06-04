@@ -103,13 +103,14 @@ void ota();
 #include "printCurrentWx.h"
 
 BlynkWifi Blynk(_blynkTransport);
-
-//SimpleTimer timer;
 BlynkTimer timer;
+//EasyNex myNex(Serial2);
+
 
 void setup() {
   Serial.begin(115200); // Fast to stop it holding up the stream
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+  myNex.begin(9600);
 
   Serial.printf("\n\nConnecting to %s\n", WIFI_SSID);
 
@@ -130,7 +131,7 @@ void setup() {
  
   //Initialize the fan relay. Mine is "off" when the relay is set HIGH.
   pinMode(RelayPin,OUTPUT); 
-  digitalWrite(RelayPin,HIGH);
+  digitalWrite(RelayPin,LOW);
  
   Serial.begin(115200);
   delay(10);
@@ -140,6 +141,7 @@ void setup() {
   Serial.println(F("STARTUP : LOADING SETTINGS FROM MEMORY"));
   Serial.println(F(""));
   GetPresets();
+  myNex.writeNum("three.n0.val",TempDes);
 
   PreviousTempDes = TempDes; 
   
@@ -149,15 +151,16 @@ void setup() {
   startDht();
   delay(1500);
   printCurrentWeather();
+
+  myNex.writeNum("three.n1.val",TempAvg); 
  }
 
-//time_t prevDisplay = 0; // when the digital clock was displayed
-  
 // Main loop
 void loop() {
   ArduinoOTA.handle();
   Blynk.run();
   timer.run();
+  myNex.NextionListen();
 }
 void checkWifi(){
     // if WiFi is down, try reconnecting every CHECK_WIFI_TIME seconds
