@@ -3,11 +3,11 @@
 #include "ds18b20.h"
 
 // GPIO where the DS18B20 is connected to
-extern const int oneWireBus;     
+const int oneWireBus = 4;     
 // Setup a oneWire instance to communicate with any OneWire devices
-extern OneWire oneWire();
+OneWire oneWire(oneWireBus);
 // Pass our oneWire reference to Dallas Temperature sensor 
-extern DallasTemperature sensors();
+DallasTemperature sensors(&oneWire);
 
 void startDs18b20(){
   sensors.begin(); //Start temperature sensor

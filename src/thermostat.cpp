@@ -5,10 +5,6 @@ long currentTime = 0;
 int TempAvg;
 
 EasyNex myNex(Serial2);
-const int oneWireBus = 4;
-OneWire oneWire(oneWireBus);
-DallasTemperature sensors(&oneWire);
-
 
 //*********************** Thermostat Functions **********************************
 

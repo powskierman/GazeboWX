@@ -79,7 +79,9 @@
     extern int TempOLED;
     extern int HumOLED;
 
-    //extern DHT dht;
+    extern const int oneWireBus;    // Setup a oneWire instance to communicate with any OneWire devices  
+    extern OneWire oneWire;
+    extern DallasTemperature sensors; // Pass our oneWire reference to Dallas Temperature sensor 
     extern EasyNex myNex;
 
     void checkWifi();
