@@ -66,7 +66,6 @@
 #include "eepromPresets.h"
 #include "thermostat.h"
 #include "blynkModule.h"
-#include "dhtModule.h"
 #include "timers.h"
 #include "ap.h"
 #include "ntpServer.h"
@@ -80,6 +79,7 @@ void intervals();
 void ntpService();
 //void connectToWifi();
 void checkWifi();
+void startDs18b20();
 
 void ota();
 
@@ -148,7 +148,7 @@ void setup() {
   MenuReset();
   intervals();
   getTime();
-  startDht();
+  startDs18b20();
   delay(1500);
   printCurrentWeather();
 

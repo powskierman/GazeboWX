@@ -5,14 +5,18 @@ long currentTime = 0;
 int TempAvg;
 
 EasyNex myNex(Serial2);
+const int oneWireBus = 4;
+OneWire oneWire(oneWireBus);
+DallasTemperature sensors(&oneWire);
+
 
 //*********************** Thermostat Functions **********************************
 
 // This is the decision algorithm for turning the HVAC on and off
 void TempUpdate(){
-
-  float ReadF = dht.readTemperature(); //Get a new reading from the temp sensor
-  Serial.print("DHT Temp: ");
+  sensors.requestTemperatures(); 
+  float ReadF = sensors.getTempCByIndex(0);
+  Serial.print("DS18B20 Temp: ");
   Serial.println(ReadF);
   Blynk.virtualWrite(V0,TempAct); //Report the corrected temperature
       

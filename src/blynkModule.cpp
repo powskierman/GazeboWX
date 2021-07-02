@@ -66,7 +66,7 @@ void OtherUpdates(){
     SetNewWidgetColor();
    }
 
-  // To stabilize perceived temperature calculation, only update humidity readings between fan cycles
+  /* To stabilize perceived temperature calculation, only update humidity readings between fan cycles
   if(!FanState){
     float ReadH = dht.readHumidity();          // Read humidity (percent)
 
@@ -82,7 +82,7 @@ void OtherUpdates(){
       }
     }
      Blynk.virtualWrite(V2, Humidity);
-  }   
+  } */  
 }
 
 void SetNewWidgetColor(){

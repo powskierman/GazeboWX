@@ -10,10 +10,10 @@
     #include <Time.h>
     #include <BlynkSimpleEsp32.h>
     #include <EasyNextionLibrary.h>
+    #include <OneWire.h>
+    #include <DallasTemperature.h>
 
-    #include "SPI.h"
-    #include "DHT.h"
-    #include "dhtModule.h"
+  //  #include "SPI.h"
     #include "ap.h"
     #include "ntpServer.h"
     #include "blynkModule.h"
@@ -79,7 +79,7 @@
     extern int TempOLED;
     extern int HumOLED;
 
-    extern DHT dht;
+    //extern DHT dht;
     extern EasyNex myNex;
 
     void checkWifi();
