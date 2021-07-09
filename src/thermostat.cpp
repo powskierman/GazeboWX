@@ -207,7 +207,8 @@ void ActualTemp(){
   Serial.print("DHT22 temp: ");
   Serial.println(TempAct);
 }
-void trigger1(){
+// Sends slider data from Nextion to GazeboWX to process desired temperature
+void trigger0(){
   int previousTempdes = 0;
   TempDes = myNex.readNumber("three.Slider0.val");
   if(TempDes != 777777){

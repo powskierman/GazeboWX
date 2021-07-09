@@ -169,3 +169,8 @@ void checkWifi(){
     ESP.restart();
   }
 }
+// Prints current weather on touch event
+void trigger1(){
+  printCurrentWeather();
+  //Serial.println("TouchEvent!!");
+}
