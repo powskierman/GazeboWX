@@ -77,7 +77,6 @@ void Fan(boolean RunFan);
 void KillManual();
 void intervals();
 void ntpService();
-//void connectToWifi();
 void checkWifi();
 void startDs18b20();
 
