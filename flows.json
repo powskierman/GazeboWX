@@ -1,1 +1,1561 @@
-[]
+[
+    {
+        "id": "a2da7fd11cc9cf62",
+        "type": "tab",
+        "label": "Time",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "23f20b6a95091b2f",
+        "type": "tab",
+        "label": "Temperature",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "0f05f30ae61cd95e",
+        "type": "tab",
+        "label": "Switch State",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "a32558ab9a426032",
+        "type": "tab",
+        "label": "Toggle Heat",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "halt_tab",
+        "type": "tab",
+        "label": "Halt",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "ce2f4e81699f4a05",
+        "type": "tab",
+        "label": "Pulse",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "home_assistant_server",
+        "type": "server",
+        "name": "Home Assistant",
+        "addon": true
+    },
+    {
+        "id": "compare_temp",
+        "type": "function",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Compare time to schedule",
+        "func": "const currentTime = msg.payload.time;\nconst startTime = msg.payload.startTime;\nconst endTime = msg.payload.endTime;\n\n// Your existing comparison logic\n// Ensure all times are in a comparable format, e.g., 'HH:MM'\nif (startTime <= endTime) {\n    // Normal case: on period is within the same day\n    msg.time_ok = currentTime >= startTime && currentTime < endTime;\n} else {\n    // Overlapping case: on period spans midnight\n    msg.time_ok = currentTime >= startTime || currentTime < endTime;\n}\n\nmsg.topic = \"time_ok\";\n// Set msg.payload to time_ok for the next Join node\nmsg.payload = msg.time_ok;\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 600,
+        "wires": [
+            [
+                "da2b32118ed14315",
+                "9402aac20ed7c3de",
+                "922a9d18783088bf"
+            ]
+        ]
+    },
+    {
+        "id": "da2b32118ed14315",
+        "type": "debug",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Compare time to schedule",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "time_ok",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1100,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "a68d6013c5a3076a",
+        "type": "server-state-changed",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Monitor Time",
+        "server": "home_assistant_server",
+        "version": 5,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entityId": "sensor.time",
+        "entityIdType": "exact",
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "time",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "time",
+                "valueType": "str"
+            },
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 130,
+        "y": 120,
+        "wires": [
+            [
+                "3417840a85847a14",
+                "ffcb6e9af9eaacc1",
+                "622c29a084e57937",
+                "a75111673d5b6f19"
+            ]
+        ]
+    },
+    {
+        "id": "3417840a85847a14",
+        "type": "debug",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Time",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "time",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 270,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "98ad29770d787aa4",
+        "type": "debug",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Start time",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "startTime",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 460,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "477c400014bbd9bf",
+        "type": "debug",
+        "z": "a2da7fd11cc9cf62",
+        "name": "End time",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "endTime",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 460,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "a75111673d5b6f19",
+        "type": "api-current-state",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Get End Time",
+        "server": "home_assistant_server",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "input_datetime.gazebo_end_time",
+        "state_type": "str",
+        "blockInputOverrides": false,
+        "outputProperties": [
+            {
+                "property": "endTime",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "endTime",
+                "valueType": "str"
+            },
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 280,
+        "y": 380,
+        "wires": [
+            [
+                "477c400014bbd9bf",
+                "ffcb6e9af9eaacc1"
+            ]
+        ]
+    },
+    {
+        "id": "622c29a084e57937",
+        "type": "api-current-state",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Get Start Time",
+        "server": "home_assistant_server",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "input_datetime.gazebo_start_time",
+        "state_type": "str",
+        "blockInputOverrides": false,
+        "outputProperties": [
+            {
+                "property": "startTime",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "startTime",
+                "valueType": "str"
+            },
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 280,
+        "y": 260,
+        "wires": [
+            [
+                "98ad29770d787aa4",
+                "ffcb6e9af9eaacc1"
+            ]
+        ]
+    },
+    {
+        "id": "9402aac20ed7c3de",
+        "type": "switch",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Is schedule ok?",
+        "property": "time_ok",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "true"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 1,
+        "x": 780,
+        "y": 780,
+        "wires": [
+            [
+                "1c82faf6859f2e73",
+                "4487e8ad7f0a3247"
+            ]
+        ]
+    },
+    {
+        "id": "ffcb6e9af9eaacc1",
+        "type": "join",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Combine time data",
+        "mode": "custom",
+        "build": "object",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "topic",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "useparts": false,
+        "accumulate": false,
+        "timeout": "",
+        "count": "3",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 600,
+        "y": 260,
+        "wires": [
+            [
+                "74716b083aefbe9d"
+            ]
+        ]
+    },
+    {
+        "id": "1c82faf6859f2e73",
+        "type": "link out",
+        "z": "a2da7fd11cc9cf62",
+        "name": "From time",
+        "mode": "link",
+        "links": [
+            "251ad05a5797f52b",
+            "612f9ae9d6696b99"
+        ],
+        "x": 1035,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "922a9d18783088bf",
+        "type": "link out",
+        "z": "a2da7fd11cc9cf62",
+        "name": "link out schedule",
+        "mode": "link",
+        "links": [
+            "755160d1b593f369"
+        ],
+        "x": 1035,
+        "y": 600,
+        "wires": []
+    },
+    {
+        "id": "74716b083aefbe9d",
+        "type": "function",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Check Halt and Pulse",
+        "func": "const halted = global.get('gazeboHalted') || false;\nconst pulseActive = global.get('pulseActive') || false;\n\nif (!halted && !pulseActive) {\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 800,
+        "y": 420,
+        "wires": [
+            [
+                "compare_temp",
+                "fd19b44988282c71"
+            ]
+        ]
+    },
+    {
+        "id": "4487e8ad7f0a3247",
+        "type": "debug",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Schedule ok?",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1060,
+        "y": 700,
+        "wires": []
+    },
+    {
+        "id": "fd19b44988282c71",
+        "type": "debug",
+        "z": "a2da7fd11cc9cf62",
+        "name": "Halt & Pulse",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1050,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "get_threshold",
+        "type": "api-current-state",
+        "z": "23f20b6a95091b2f",
+        "name": "Get Threshold",
+        "server": "home_assistant_server",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is_not_set",
+        "entity_id": "input_number.gazebo_threshold",
+        "state_type": "num",
+        "blockInputOverrides": false,
+        "outputProperties": [
+            {
+                "property": "threshold",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "threshold",
+                "valueType": "str"
+            },
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": 0,
+        "forType": "num",
+        "forUnits": "minutes",
+        "x": 560,
+        "y": 720,
+        "wires": [
+            [
+                "ec457f6c61a24c8c",
+                "9b1f85ed26edf425"
+            ]
+        ]
+    },
+    {
+        "id": "938a556871aa14fe",
+        "type": "debug",
+        "z": "23f20b6a95091b2f",
+        "name": "Temperature",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "temperature",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 690,
+        "y": 140,
+        "wires": []
+    },
+    {
+        "id": "ec457f6c61a24c8c",
+        "type": "debug",
+        "z": "23f20b6a95091b2f",
+        "name": "Threshold",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "threshold",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "5eb29c1e317ec89d",
+        "type": "debug",
+        "z": "23f20b6a95091b2f",
+        "name": "Compare temp to threshold",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1000,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "04e8e0813a219aed",
+        "type": "function",
+        "z": "23f20b6a95091b2f",
+        "name": "Compare Temp to Threshold",
+        "func": "const temperature = parseFloat(msg.payload.temperature);\nconst threshold = parseFloat(msg.payload.threshold);\nconst hysteresis = parseFloat(msg.payload.hysteresis);\nconst timeOk = msg.payload.time_ok; // Result from time comparison\n\n// Get previous state from msg.payload.previousState\nlet previousState = msg.payload.previousState || 'off';\n\nlet newState;\n\nif (!timeOk) {\n    // If time is not OK, ensure the device is turned off\n    newState = 'off';\n} else {\n    if (previousState === 'on' || previousState === 'turn_on') {\n        // Device is currently ON\n        // Turn OFF if temperature rises above threshold + hysteresis\n        if (temperature >= (threshold + hysteresis)) {\n            newState = 'off';\n        } else {\n            newState = 'on';\n        }\n    } else {\n        // Device is currently OFF\n        // Turn ON if temperature drops below threshold - hysteresis\n        if (temperature <= (threshold - hysteresis)) {\n            newState = 'on';\n        } else {\n            newState = 'off';\n        }\n    }\n}\n\n// Store the new state in context for future reference\ncontext.set('previousState', newState);\n\nreturn { payload: newState === 'on' ? 'turn_on' : 'turn_off' };",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1000,
+        "y": 480,
+        "wires": [
+            [
+                "5eb29c1e317ec89d",
+                "5ecf551045b62925"
+            ]
+        ]
+    },
+    {
+        "id": "9b1f85ed26edf425",
+        "type": "join",
+        "z": "23f20b6a95091b2f",
+        "name": "Join entities",
+        "mode": "custom",
+        "build": "object",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "topic",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "useparts": false,
+        "accumulate": false,
+        "timeout": "",
+        "count": "5",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 1000,
+        "y": 340,
+        "wires": [
+            [
+                "04e8e0813a219aed"
+            ]
+        ]
+    },
+    {
+        "id": "251ad05a5797f52b",
+        "type": "link in",
+        "z": "23f20b6a95091b2f",
+        "name": "link in from time",
+        "links": [
+            "1c82faf6859f2e73"
+        ],
+        "x": 125,
+        "y": 40,
+        "wires": [
+            [
+                "e74f116a837d94d9"
+            ]
+        ]
+    },
+    {
+        "id": "755160d1b593f369",
+        "type": "link in",
+        "z": "23f20b6a95091b2f",
+        "name": "link in 1",
+        "links": [
+            "922a9d18783088bf"
+        ],
+        "x": 795,
+        "y": 220,
+        "wires": [
+            [
+                "9b1f85ed26edf425"
+            ]
+        ]
+    },
+    {
+        "id": "e85b90bde929db2f",
+        "type": "function",
+        "z": "23f20b6a95091b2f",
+        "name": "Check Halt and Pulse",
+        "func": "const halted = global.get('gazeboHalted') || false;\nconst pulseActive = global.get('pulseActive') || false;\n\nif (!halted && !pulseActive) {\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 670,
+        "y": 280,
+        "wires": [
+            [
+                "9b1f85ed26edf425"
+            ]
+        ]
+    },
+    {
+        "id": "5ecf551045b62925",
+        "type": "link out",
+        "z": "23f20b6a95091b2f",
+        "name": "to switch state",
+        "mode": "link",
+        "links": [
+            "d6a9144e6d917582"
+        ],
+        "x": 1115,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "5b1a32c5a8d166cd",
+        "type": "api-current-state",
+        "z": "23f20b6a95091b2f",
+        "name": "Get Hysteresis",
+        "server": "home_assistant_server",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "input_number.gazebo_hysteresis",
+        "state_type": "str",
+        "blockInputOverrides": false,
+        "outputProperties": [
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "\"hysteresis\"",
+                "valueType": "jsonata"
+            },
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "hysteresis",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 620,
+        "y": 360,
+        "wires": [
+            [
+                "9b1f85ed26edf425",
+                "b2ae5180776542a6"
+            ]
+        ]
+    },
+    {
+        "id": "6d57f8e8aa421e73",
+        "type": "api-current-state",
+        "z": "23f20b6a95091b2f",
+        "name": "Get Device State",
+        "server": "home_assistant_server",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "switch.gazebo_thermostat_switch",
+        "state_type": "str",
+        "blockInputOverrides": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "\"previous_state\"",
+                "valueType": "str"
+            },
+            {
+                "property": "previousState",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 610,
+        "y": 540,
+        "wires": [
+            [
+                "9b1f85ed26edf425",
+                "2a1118a71865b4b4"
+            ]
+        ]
+    },
+    {
+        "id": "b2ae5180776542a6",
+        "type": "debug",
+        "z": "23f20b6a95091b2f",
+        "name": "hysteresis",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 740,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "2a1118a71865b4b4",
+        "type": "debug",
+        "z": "23f20b6a95091b2f",
+        "name": "Device state",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 630,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "e74f116a837d94d9",
+        "type": "api-current-state",
+        "z": "23f20b6a95091b2f",
+        "name": "Monitor Temperature",
+        "server": "home_assistant_server",
+        "version": 3,
+        "outputs": 1,
+        "halt_if": "",
+        "halt_if_type": "str",
+        "halt_if_compare": "is",
+        "entity_id": "sensor.gazebothermostat_temperature",
+        "state_type": "str",
+        "blockInputOverrides": false,
+        "outputProperties": [
+            {
+                "property": "temperature",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entity"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "temperature",
+                "valueType": "str"
+            },
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "override_topic": false,
+        "state_location": "payload",
+        "override_payload": "msg",
+        "entity_location": "data",
+        "override_data": "msg",
+        "x": 260,
+        "y": 40,
+        "wires": [
+            [
+                "0c5327075ab202b1"
+            ]
+        ]
+    },
+    {
+        "id": "0c5327075ab202b1",
+        "type": "join",
+        "z": "23f20b6a95091b2f",
+        "name": "Join Temperature Outputs",
+        "mode": "auto",
+        "build": "object",
+        "property": "payload",
+        "propertyType": "msg",
+        "key": "topic",
+        "joiner": "\\n",
+        "joinerType": "str",
+        "useparts": false,
+        "accumulate": true,
+        "timeout": "",
+        "count": "",
+        "reduceRight": false,
+        "reduceExp": "",
+        "reduceInit": "",
+        "reduceInitType": "",
+        "reduceFixup": "",
+        "x": 310,
+        "y": 260,
+        "wires": [
+            [
+                "938a556871aa14fe",
+                "e85b90bde929db2f",
+                "5b1a32c5a8d166cd",
+                "6d57f8e8aa421e73",
+                "get_threshold"
+            ]
+        ]
+    },
+    {
+        "id": "turn_on_switch",
+        "type": "api-call-service",
+        "z": "0f05f30ae61cd95e",
+        "name": "Turn On Switch",
+        "server": "home_assistant_server",
+        "version": 5,
+        "debugenabled": false,
+        "domain": "switch",
+        "service": "turn_on",
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.gazebo_thermostat_switch",
+            "switch.gazebo_thermostat_switch"
+        ],
+        "data": "",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "output_location": "",
+        "output_location_type": "none",
+        "x": 540,
+        "y": 60,
+        "wires": [
+            [
+                "6f59067a9651884e"
+            ]
+        ]
+    },
+    {
+        "id": "6f59067a9651884e",
+        "type": "debug",
+        "z": "0f05f30ae61cd95e",
+        "name": "Switch state",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 750,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "099683a86ba2601c",
+        "type": "switch",
+        "z": "0f05f30ae61cd95e",
+        "name": "Turn switch on?",
+        "property": "payload",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "turn_on",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "turn_off",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 300,
+        "y": 160,
+        "wires": [
+            [
+                "turn_on_switch"
+            ],
+            [
+                "0971adf5235ee149"
+            ]
+        ]
+    },
+    {
+        "id": "0971adf5235ee149",
+        "type": "api-call-service",
+        "z": "0f05f30ae61cd95e",
+        "name": "Turn Off Switch",
+        "server": "home_assistant_server",
+        "version": 5,
+        "debugenabled": false,
+        "domain": "switch",
+        "service": "turn_off",
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.gazebo_thermostat_switch",
+            "switch.gazebo_thermostat_switch"
+        ],
+        "data": "",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "output_location": "",
+        "output_location_type": "none",
+        "x": 540,
+        "y": 260,
+        "wires": [
+            [
+                "6f59067a9651884e"
+            ]
+        ]
+    },
+    {
+        "id": "d6a9144e6d917582",
+        "type": "link in",
+        "z": "0f05f30ae61cd95e",
+        "name": "from monitor temperature",
+        "links": [
+            "5ecf551045b62925"
+        ],
+        "x": 115,
+        "y": 160,
+        "wires": [
+            [
+                "099683a86ba2601c"
+            ]
+        ]
+    },
+    {
+        "id": "d8c0f4888d82da9a",
+        "type": "function",
+        "z": "a32558ab9a426032",
+        "name": "Change Stove State",
+        "func": "if (msg.payload === true) {\n    msg.payload = 'turn_on';\n} else {\n    msg.payload = 'turn_off';\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 500,
+        "wires": [
+            [
+                "a43137cfdd5fe9bc",
+                "d01aae7b2faf2e85"
+            ]
+        ]
+    },
+    {
+        "id": "a43137cfdd5fe9bc",
+        "type": "api-call-service",
+        "z": "a32558ab9a426032",
+        "name": "Set Gazebo Thermostat",
+        "server": "home_assistant_server",
+        "version": 5,
+        "debugenabled": false,
+        "domain": "switch",
+        "service": "{{payload}}",
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.gazebo_thermostat_switch"
+        ],
+        "data": "",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "x": 910,
+        "y": 500,
+        "wires": [
+            [
+                "34390e5a4522be74"
+            ]
+        ]
+    },
+    {
+        "id": "c5fea5dc11f88c2d",
+        "type": "server-state-changed",
+        "z": "a32558ab9a426032",
+        "name": "Monitor Gazebo Heat Toggle",
+        "server": "home_assistant_server",
+        "version": 5,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entityId": "input_boolean.gazeboheat",
+        "entityIdType": "exact",
+        "outputInitially": false,
+        "stateType": "habool",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "",
+        "forType": "num",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            }
+        ],
+        "x": 280,
+        "y": 140,
+        "wires": [
+            [
+                "fd38b0e136559dc6",
+                "ba44d74b91d12c57"
+            ]
+        ]
+    },
+    {
+        "id": "fd38b0e136559dc6",
+        "type": "debug",
+        "z": "a32558ab9a426032",
+        "name": "State Changed Debug",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 580,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "d01aae7b2faf2e85",
+        "type": "debug",
+        "z": "a32558ab9a426032",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "34390e5a4522be74",
+        "type": "debug",
+        "z": "a32558ab9a426032",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1120,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "ba44d74b91d12c57",
+        "type": "function",
+        "z": "a32558ab9a426032",
+        "name": "Check Halt and Pulse",
+        "func": "const halted = global.get('gazeboHalted') || false;\nconst pulseActive = global.get('pulseActive') || false;\n\nif (!halted && !pulseActive) {\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 300,
+        "wires": [
+            [
+                "d8c0f4888d82da9a"
+            ]
+        ]
+    },
+    {
+        "id": "process_halt_state",
+        "type": "function",
+        "z": "halt_tab",
+        "name": "Process Halt State",
+        "func": "const haltState = msg.payload;\nglobal.set('gazeboHalted', haltState === 'on');\n\nif (haltState === 'on') {\n    return { payload: 'turn_off' };\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 120,
+        "wires": [
+            [
+                "turn_off_switch"
+            ]
+        ]
+    },
+    {
+        "id": "turn_off_switch",
+        "type": "api-call-service",
+        "z": "halt_tab",
+        "name": "Turn Off Gazebo Thermostat",
+        "server": "home_assistant_server",
+        "version": 5,
+        "debugenabled": false,
+        "domain": "switch",
+        "service": "turn_off",
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.gazebo_thermostat_switch"
+        ],
+        "data": "",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "x": 660,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "903364660e46d869",
+        "type": "debug",
+        "z": "halt_tab",
+        "name": "Halt Pressed",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 330,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "8217d048fda1b15c",
+        "type": "server-state-changed",
+        "z": "halt_tab",
+        "name": "Monitor GazeboHalt",
+        "server": "home_assistant_server",
+        "version": 5,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entityId": "input_boolean.gazebo_halt",
+        "entityIdType": "exact",
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "triggerId"
+            }
+        ],
+        "x": 130,
+        "y": 120,
+        "wires": [
+            [
+                "process_halt_state",
+                "903364660e46d869"
+            ]
+        ]
+    },
+    {
+        "id": "input_button_node",
+        "type": "server-state-changed",
+        "z": "ce2f4e81699f4a05",
+        "name": "Gazebo Pulse Button Pressed",
+        "server": "home_assistant_server",
+        "version": 5,
+        "outputs": 1,
+        "exposeAsEntityConfig": "",
+        "entityId": "input_button.gazebo_pulse",
+        "entityIdType": "exact",
+        "outputInitially": false,
+        "stateType": "str",
+        "ifState": "",
+        "ifStateType": "str",
+        "ifStateOperator": "is",
+        "outputOnlyOnStateChange": true,
+        "for": "0",
+        "forType": "num",
+        "forUnits": "minutes",
+        "ignorePrevStateNull": false,
+        "ignorePrevStateUnknown": false,
+        "ignorePrevStateUnavailable": false,
+        "ignoreCurrentStateUnknown": false,
+        "ignoreCurrentStateUnavailable": false,
+        "outputProperties": [
+            {
+                "property": "payload",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "entityState"
+            },
+            {
+                "property": "data",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "eventData"
+            },
+            {
+                "property": "topic",
+                "propertyType": "msg",
+                "value": "",
+                "valueType": "triggerId"
+            }
+        ],
+        "x": 160,
+        "y": 180,
+        "wires": [
+            [
+                "2da6e9014c68f133",
+                "check_halt_pulse"
+            ]
+        ]
+    },
+    {
+        "id": "turn_on_node",
+        "type": "api-call-service",
+        "z": "ce2f4e81699f4a05",
+        "name": "Turn On Gazebo Thermostat",
+        "server": "home_assistant_server",
+        "version": 5,
+        "debugenabled": false,
+        "domain": "switch",
+        "service": "turn_on",
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [
+            "switch.gazebo_thermostat_switch"
+        ],
+        "data": "",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "x": 160,
+        "y": 500,
+        "wires": [
+            [
+                "delay_node",
+                "62593b95cd533c5a"
+            ]
+        ]
+    },
+    {
+        "id": "delay_node",
+        "type": "delay",
+        "z": "ce2f4e81699f4a05",
+        "name": "Wait 15 minutes",
+        "pauseType": "delay",
+        "timeout": "15",
+        "timeoutUnits": "minutes",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "outputs": 1,
+        "x": 180,
+        "y": 660,
+        "wires": [
+            [
+                "turn_off_node",
+                "40872f8ee5a307a4"
+            ]
+        ]
+    },
+    {
+        "id": "turn_off_node",
+        "type": "api-call-service",
+        "z": "ce2f4e81699f4a05",
+        "name": "Turn Off Gazebo Thermostat",
+        "server": "home_assistant_server",
+        "version": 5,
+        "debugenabled": false,
+        "domain": "switch",
+        "service": "turn_off",
+        "areaId": [],
+        "deviceId": [],
+        "entityId": [],
+        "data": "",
+        "dataType": "json",
+        "mergeContext": "",
+        "mustacheAltTags": false,
+        "outputProperties": [],
+        "queue": "none",
+        "x": 160,
+        "y": 800,
+        "wires": [
+            [
+                "a76e1081a55b32f9"
+            ]
+        ]
+    },
+    {
+        "id": "2da6e9014c68f133",
+        "type": "debug",
+        "z": "ce2f4e81699f4a05",
+        "name": "Button Pressed",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 400,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "62593b95cd533c5a",
+        "type": "debug",
+        "z": "ce2f4e81699f4a05",
+        "name": "Thermostat On",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 420,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "40872f8ee5a307a4",
+        "type": "debug",
+        "z": "ce2f4e81699f4a05",
+        "name": "Wait",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 370,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "a76e1081a55b32f9",
+        "type": "debug",
+        "z": "ce2f4e81699f4a05",
+        "name": "Thermostat Off",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 400,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "9d712a1132dbf3ea",
+        "type": "function",
+        "z": "ce2f4e81699f4a05",
+        "name": "Set Pulse Active",
+        "func": "global.set('pulseActive', true);\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 180,
+        "y": 380,
+        "wires": [
+            [
+                "turn_on_node"
+            ]
+        ]
+    },
+    {
+        "id": "check_halt_pulse",
+        "type": "function",
+        "z": "ce2f4e81699f4a05",
+        "name": "Check Halt",
+        "func": "const halted = global.get('gazeboHalted') || false;\n\nif (!halted) {\n    return msg;\n}\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 170,
+        "y": 280,
+        "wires": [
+            [
+                "9d712a1132dbf3ea",
+                "d3323a19b777c8ee"
+            ]
+        ]
+    },
+    {
+        "id": "d3323a19b777c8ee",
+        "type": "debug",
+        "z": "ce2f4e81699f4a05",
+        "name": "Halt Check",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 410,
+        "y": 280,
+        "wires": []
+    }
+]
