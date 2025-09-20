@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/michel/Documents/Electronics/Projects/Gazebo/GazeboWx/.esphome/build/gazebo-thermostat/.pioenvs/gazebo-thermostat/CMakeFiles/bootloader"
+		},
+		{
+			"file" : "/Users/michel/Documents/Electronics/Projects/Gazebo/GazeboWx/.esphome/build/gazebo-thermostat/.pioenvs/gazebo-thermostat/CMakeFiles/bootloader.rule"
+		},
+		{
+			"file" : "/Users/michel/Documents/Electronics/Projects/Gazebo/GazeboWx/.esphome/build/gazebo-thermostat/.pioenvs/gazebo-thermostat/CMakeFiles/bootloader-complete.rule"
+		},
+		{
+			"file" : "/Users/michel/Documents/Electronics/Projects/Gazebo/GazeboWx/.esphome/build/gazebo-thermostat/.pioenvs/gazebo-thermostat/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule"
+		},
+		{
+			"file" : "/Users/michel/Documents/Electronics/Projects/Gazebo/GazeboWx/.esphome/build/gazebo-thermostat/.pioenvs/gazebo-thermostat/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule"
+		},
+		{
+			"file" : "/Users/michel/Documents/Electronics/Projects/Gazebo/GazeboWx/.esphome/build/gazebo-thermostat/.pioenvs/gazebo-thermostat/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule"
+		},
+		{
+			"file" : "/Users/michel/Documents/Electronics/Projects/Gazebo/GazeboWx/.esphome/build/gazebo-thermostat/.pioenvs/gazebo-thermostat/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule"
+		},
+		{
+			"file" : "/Users/michel/Documents/Electronics/Projects/Gazebo/GazeboWx/.esphome/build/gazebo-thermostat/.pioenvs/gazebo-thermostat/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule"
+		},
+		{
+			"file" : "/Users/michel/Documents/Electronics/Projects/Gazebo/GazeboWx/.esphome/build/gazebo-thermostat/.pioenvs/gazebo-thermostat/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule"
+		},
+		{
+			"file" : "/Users/michel/Documents/Electronics/Projects/Gazebo/GazeboWx/.esphome/build/gazebo-thermostat/.pioenvs/gazebo-thermostat/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"bootloader"
+		],
+		"name" : "bootloader"
+	}
+}

@@ -1,0 +1,339 @@
+esphome:
+  name: gazebo-thermostat
+  on_boot:
+    - priority: -100
+      then:
+        - logger.log: "Gazebo Thermostat booted successfully"
+        - delay: 2s
+        - component.update: gazebo_temp
+        - delay: 1s
+        - lambda: |-
+            ESP_LOGD("boot", "Thermostat mode at boot: %s", id(thermostat_mode).state.c_str());
+            ESP_LOGD("boot", "Desired temp at boot: %.1f", id(temp_desired).state);
+            ESP_LOGD("boot", "Hysteresis at boot: %.1f", id(hysteresis).state);
+            // Initialize last_heating_change to current time to avoid safety delay on boot
+            id(last_heating_change) = millis();
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+    version: recommended
+  
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none
+  fast_connect: true
+  output_power: 17dB
+  manual_ip:
+    static_ip: 192.168.0.242
+    gateway: 192.168.0.1
+    subnet: 255.255.255.0
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Gazebo-Thermostat-Fallback"
+    password: "configesp32"
+
+captive_portal:
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  reboot_timeout: 0s
+
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+# Enable Web Server
+web_server:
+  port: 80
+
+# Time component for NTP
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: America/New_York
+    servers:
+      - us.pool.ntp.org
+
+# UART for Nextion display
+uart:
+  - id: uart_nextion
+    tx_pin: 17  # TXD2
+    rx_pin: 16  # RXD2
+    baud_rate: 9600
+
+# One Wire bus for DS18B20 temperature sensor (commented out for testing)
+# one_wire:
+#   - platform: gpio
+#     pin: 4
+#     id: gpio_4
+
+# Temperature sensors
+sensor:
+  # Simulated temperature sensor for testing
+  - platform: template
+    name: "Gazebo Temperature"
+    id: gazebo_temp
+    accuracy_decimals: 1
+    unit_of_measurement: "°C"
+    update_interval: 10s
+    lambda: |-
+      return 20.0 + id(temp_correction).state;  // Constant 20C + temperature correction
+    on_value:
+      - logger.log:
+          format: "Temperature updated: %.1f°C"
+          args: ['x']
+
+  # Real Dallas sensor (commented out for testing)
+  # - platform: dallas_temp
+  #   one_wire_id: gpio_4
+  #   name: "Gazebo Temperature"
+  #   id: gazebo_temp
+  #   accuracy_decimals: 1
+  #   unit_of_measurement: "°C"
+  #   update_interval: 10s
+  #   filters:
+  #     - lambda: return x + id(temp_correction).state;  # Apply temperature correction
+  #   on_value:
+  #     - logger.log:
+  #         format: "Temperature updated: %.1f°C"
+  #         args: ['x']
+
+  # WiFi Signal Strength
+  - platform: wifi_signal
+    name: "Gazebo WiFi Signal"
+    update_interval: 60s
+
+  # Uptime sensor
+  - platform: uptime
+    name: "Gazebo Uptime"
+
+# Binary sensors
+binary_sensor:
+  - platform: status
+    name: "Gazebo Status"
+
+  # Nextion touch events (received via UART)
+  - platform: nextion
+    nextion_id: nextion_display
+    page_id: 0
+    component_id: 2
+    name: "Temp Up Button"
+    on_press:
+      then:
+        - number.set:
+            id: temp_desired
+            value: !lambda 'return min(35.0f, id(temp_desired).state + 1.0f);'
+        - logger.log: "Temperature increased via Nextion"
+
+  - platform: nextion
+    nextion_id: nextion_display
+    page_id: 0
+    component_id: 3
+    name: "Temp Down Button"
+    on_press:
+      then:
+        - number.set:
+            id: temp_desired
+            value: !lambda 'return max(10.0f, id(temp_desired).state - 1.0f);'
+        - logger.log: "Temperature decreased via Nextion"
+
+
+# Switches and controls
+switch:
+  - platform: gpio
+    pin: 12
+    name: "Gazebo Relay"
+    id: gazebo_relay
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - logger.log: "Gazebo heating turned ON"
+    on_turn_off:
+      - logger.log: "Gazebo heating turned OFF"
+
+# Number inputs for settings
+number:
+  - platform: template
+    name: "Desired Temperature"
+    id: temp_desired
+    min_value: 10
+    max_value: 35
+    step: 0.5
+    initial_value: 20
+    unit_of_measurement: "°C"
+    mode: box
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Temperature Correction"
+    id: temp_correction
+    min_value: -10
+    max_value: 10
+    step: 0.1
+    initial_value: 0
+    unit_of_measurement: "°C"
+    mode: box
+    restore_value: true
+    optimistic: true
+
+  - platform: template
+    name: "Hysteresis"
+    id: hysteresis
+    min_value: 1
+    max_value: 5
+    step: 0.5
+    initial_value: 2
+    unit_of_measurement: "°C"
+    mode: box
+    restore_value: true
+    optimistic: true
+
+# Select for mode
+select:
+  - platform: template
+    name: "Thermostat Mode"
+    id: thermostat_mode
+    options:
+      - "Off"
+      - "Heat"
+      - "Manual"
+    initial_option: "Heat"
+    restore_value: true
+    optimistic: true
+
+# Text sensors for status
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "Gazebo IP Address"
+    ssid:
+      name: "Gazebo Connected SSID"
+
+# Global variables for thermostat control
+globals:
+  - id: heating_state
+    type: bool
+    initial_value: 'false'
+    restore_value: false
+  - id: last_heating_change
+    type: unsigned long
+    initial_value: '0'
+    restore_value: false
+
+
+# Climate component for thermostat functionality (disabled - using custom control)
+# climate:
+#   - platform: thermostat
+#     name: "Gazebo Thermostat"
+#     sensor: gazebo_temp
+#     min_heating_off_time: 300s
+#     min_heating_run_time: 300s
+#     min_idle_time: 30s
+#     heat_action:
+#       - switch.turn_on: gazebo_relay
+#       - globals.set:
+#           id: heating_state
+#           value: 'true'
+#       - globals.set:
+#           id: last_heating_change
+#           value: !lambda 'return millis();'
+#     idle_action:
+#       - switch.turn_off: gazebo_relay
+#       - globals.set:
+#           id: heating_state
+#           value: 'false'
+#       - globals.set:
+#           id: last_heating_change
+#           value: !lambda 'return millis();'
+#     default_preset: Home
+#     preset:
+#       - name: Home
+#         default_target_temperature_low: 18°C
+#       - name: Away
+#         default_target_temperature_low: 15°C
+
+# Intervals and automations
+interval:
+  - interval: 10s
+    then:
+      - component.update: gazebo_temp
+
+  # Hysteresis thermostat control
+  - interval: 10s
+    then:
+      - lambda: |-
+          // Debug: Always log thermostat check
+          ESP_LOGD("thermostat", "=== Thermostat Check ===");
+
+          // Only run if thermostat mode is Heat
+          auto mode = id(thermostat_mode).state;
+          ESP_LOGD("thermostat", "Mode: %s", mode.c_str());
+          if (mode != "Heat") {
+            ESP_LOGD("thermostat", "Mode is not Heat, skipping");
+            return;
+          }
+
+          float current_temp = id(gazebo_temp).state;
+          float desired_temp = id(temp_desired).state;
+          float hysteresis_val = id(hysteresis).state;
+          bool heating = id(heating_state);
+          unsigned long now = millis();
+          unsigned long last_change = id(last_heating_change);
+
+          ESP_LOGD("thermostat", "Current: %.1f°C, Desired: %.1f°C, Hysteresis: %.1f°C, Heating: %s",
+                   current_temp, desired_temp, hysteresis_val, heating ? "ON" : "OFF");
+
+          // Hysteresis logic
+          if (!heating && current_temp < (desired_temp - hysteresis_val)) {
+            // Turn on heating if temp is below target minus hysteresis
+            ESP_LOGD("thermostat", "Temperature %.1f°C < %.1f°C (target-%.1f°C), turning ON heating",
+                     current_temp, desired_temp - hysteresis_val, hysteresis_val);
+            id(gazebo_relay).turn_on();
+            id(heating_state) = true;
+            id(last_heating_change) = now;
+          } else if (heating && current_temp > (desired_temp + hysteresis_val)) {
+            // Turn off heating if temp is above target plus hysteresis
+            ESP_LOGD("thermostat", "Temperature %.1f°C > %.1f°C (target+%.1f°C), turning OFF heating",
+                     current_temp, desired_temp + hysteresis_val, hysteresis_val);
+            id(gazebo_relay).turn_off();
+            id(heating_state) = false;
+            id(last_heating_change) = now;
+          } else {
+            ESP_LOGD("thermostat", "No action needed - within hysteresis range");
+          }
+
+
+# Nextion Display
+display:
+  - platform: nextion
+    id: nextion_display
+    uart_id: uart_nextion
+    update_interval: 5s
+    lambda: |-
+      // Update temperature display
+      auto temp_str = to_string(id(gazebo_temp).state);
+      auto desired_str = to_string(id(temp_desired).state);
+      auto mode_str = id(thermostat_mode).state;
+      auto heating_status = id(heating_state) ? "ON" : "OFF";
+
+      // Send temperature data to Nextion
+      it.send_command_printf("temp.val=%.0f", id(gazebo_temp).state);
+      it.send_command_printf("desired.val=%.0f", id(temp_desired).state);
+      it.send_command_printf("mode.txt=\"%s\"", mode_str.c_str());
+      it.send_command_printf("heating.txt=\"%s\"", heating_status);
+      it.send_command_printf("hysteresis.val=%.1f", id(hysteresis).state);
+
+
+# HTTP request component for weather API (if needed)
+http_request:
+  useragent: esphome/gazebo-thermostat
+  timeout: 10s
+
