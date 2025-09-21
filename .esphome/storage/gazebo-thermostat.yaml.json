@@ -53,6 +53,7 @@
   "loaded_platforms": [
     "binary_sensor/nextion",
     "binary_sensor/status",
+    "binary_sensor/template",
     "display/nextion",
     "number/template",
     "ota/esphome",
@@ -62,6 +63,7 @@
     "sensor/uptime",
     "sensor/wifi_signal",
     "switch/gpio",
+    "text_sensor/template",
     "text_sensor/wifi_info",
     "time/sntp"
   ],

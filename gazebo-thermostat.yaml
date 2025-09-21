@@ -63,9 +63,6 @@ api:
 ota:
   platform: esphome
   password: !secret ota_password
-  safe_mode: true
-  reboot_timeout: 10min
-  num_attempts: 3
   on_begin:
     - logger.log: "OTA update started - system entering safe mode"
     - lambda: |-
@@ -89,6 +86,11 @@ ota:
     - lambda: |-
         ESP_LOGE("ota", "OTA update failed - system will reboot to safe firmware");
         // Note: ESPHome will automatically reboot to previous firmware
+
+# Safe mode component
+safe_mode:
+  reboot_timeout: 10min
+  num_attempts: 3
 
 # Enable Web Server
 web_server:
@@ -137,7 +139,7 @@ uart:
 
 # Temperature sensors
 sensor:
-  # Simulated temperature sensor for testing
+  # Simulated temperature sensor with advanced validation
   - platform: template
     name: "Gazebo Temperature"
     id: gazebo_temp
@@ -145,32 +147,67 @@ sensor:
     unit_of_measurement: "°C"
     update_interval: 10s
     lambda: |-
-      return 20.0 + id(temp_correction).state;  // Constant 20C + temperature correction
-    filters:
-      - filter_out: nan
-      - clamp:
-          min_value: -40.0
-          max_value: 85.0
+      // Raw sensor reading (simulated)
+      float raw_temp = 20.0 + id(temp_correction).state;
+
+      // Advanced Sensor Validation with BadRead Logic
+      bool is_valid = true;
+
+      // 1. NaN Detection
+      if (std::isnan(raw_temp)) {
+        ESP_LOGW("sensor", "NaN temperature reading detected");
+        is_valid = false;
+      }
+
+      // 2. Range Validation (-40°C to 80°C)
+      if (raw_temp < -40.0 || raw_temp > 80.0) {
+        ESP_LOGW("sensor", "Temperature reading %.1f°C outside valid range (-40°C to 80°C)", raw_temp);
+        is_valid = false;
+      }
+
+      if (!is_valid) {
+        // 3. Bad Read Counting - Increment counter on failure
+        id(sensor_bad_reads) = id(sensor_bad_reads) + 1;
+        ESP_LOGW("sensor", "Bad read count: %d", id(sensor_bad_reads));
+
+        // 4. Malfunction Threshold - Trigger after 10 consecutive bad reads
+        if (id(sensor_bad_reads) >= 10 && !id(sensor_malfunction)) {
+          ESP_LOGE("sensor", "Sensor malfunction detected after %d consecutive bad reads", id(sensor_bad_reads));
+          id(sensor_malfunction) = true;
+        }
+
+        // 6. Fallback Value - Return last valid reading when sensor fails
+        ESP_LOGW("sensor", "Using last valid temperature: %.1f°C", id(sensor_last_valid));
+        return id(sensor_last_valid);
+      } else {
+        // Valid reading received
+        if (id(sensor_bad_reads) > 0) {
+          ESP_LOGI("sensor", "Sensor recovered after %d bad reads", id(sensor_bad_reads));
+          id(sensor_bad_reads) = 0;  // Reset bad read counter
+          id(sensor_malfunction) = false;  // Clear malfunction flag
+        }
+
+        // 5. Temperature Smoothing - Limit changes to 1°C per reading
+        float temp_diff = raw_temp - id(temp_smoothed);
+        if (abs(temp_diff) > 1.0) {
+          // Limit change to 1°C
+          float smoothed = id(temp_smoothed) + (temp_diff > 0 ? 1.0 : -1.0);
+          ESP_LOGD("sensor", "Temperature smoothing: %.1f°C -> %.1f°C (limited from %.1f°C)",
+                   id(temp_smoothed), smoothed, raw_temp);
+          id(temp_smoothed) = smoothed;
+        } else {
+          id(temp_smoothed) = raw_temp;
+        }
+
+        // Store as last valid reading
+        id(sensor_last_valid) = id(temp_smoothed);
+
+        return id(temp_smoothed);
+      }
     on_value:
       - logger.log:
-          format: "Temperature updated: %.1f°C"
-          args: ['x']
-    on_raw_value:
-      - if:
-          condition:
-            lambda: 'return std::isnan(x) || x < -40.0 || x > 85.0;'
-          then:
-            - logger.log:
-                format: "Invalid temperature reading: %.1f°C - using fallback"
-                args: ['x']
-                level: WARN
-            - lambda: |-
-                // Set emergency heating off if sensor fails
-                if (id(heating_state)) {
-                  ESP_LOGW("safety", "Sensor failure - turning off heating for safety");
-                  id(gazebo_relay).turn_off();
-                  id(heating_state) = false;
-                }
+          format: "Temperature updated: %.1f°C (Bad reads: %d, Malfunction: %s)"
+          args: ['x', 'id(sensor_bad_reads)', 'id(sensor_malfunction) ? "YES" : "NO"']
 
   # Real Dallas sensor (commented out for testing)
   # - platform: dallas_temp
@@ -196,10 +233,38 @@ sensor:
   - platform: uptime
     name: "Gazebo Uptime"
 
+  # Bad Read Counter for Home Assistant monitoring
+  - platform: template
+    name: "Sensor Bad Read Count"
+    id: sensor_bad_read_count
+    accuracy_decimals: 0
+    unit_of_measurement: "reads"
+    update_interval: 10s
+    lambda: |-
+      return id(sensor_bad_reads);
+
+  # Last Valid Temperature for Home Assistant monitoring
+  - platform: template
+    name: "Last Valid Temperature"
+    id: sensor_last_valid_temp
+    accuracy_decimals: 1
+    unit_of_measurement: "°C"
+    update_interval: 10s
+    lambda: |-
+      return id(sensor_last_valid);
+
 # Binary sensors
 binary_sensor:
   - platform: status
     name: "Gazebo Status"
+
+  # Sensor Malfunction Status for Home Assistant
+  - platform: template
+    name: "Sensor Malfunction"
+    id: sensor_malfunction_status
+    device_class: problem
+    lambda: |-
+      return id(sensor_malfunction);
 
   # Nextion touch events (received via UART)
   - platform: nextion
@@ -300,6 +365,20 @@ text_sensor:
       name: "Gazebo Connected SSID"
       id: wifi_ssid_sensor
 
+  # Sensor Status Text for Home Assistant
+  - platform: template
+    name: "Sensor Status"
+    id: sensor_status_text
+    update_interval: 10s
+    lambda: |-
+      if (id(sensor_malfunction)) {
+        return {"<<< SENSOR MALFUNCTION >>>"};
+      } else if (id(sensor_bad_reads) > 0) {
+        return {"Sensor errors: " + to_string(id(sensor_bad_reads))};
+      } else {
+        return {"Sensor OK"};
+      }
+
 # Global variables for thermostat control
 globals:
   - id: heating_state
@@ -386,6 +465,19 @@ interval:
           // Debug: Always log thermostat check
           ESP_LOGD("thermostat", "=== Thermostat Check ===");
 
+          // Priority Safety Check: Sensor malfunction check runs first
+          if (id(sensor_malfunction)) {
+            // Forced Shutdown: Automatically turns off heating when sensor fails
+            if (id(heating_state)) {
+              ESP_LOGW("safety", "Sensor malfunction detected - forcing heating OFF for safety");
+              id(gazebo_relay).turn_off();
+              id(heating_state) = false;
+              id(last_heating_change) = millis();
+            }
+            ESP_LOGW("safety", "Thermostat disabled due to sensor malfunction");
+            return;  // Non-recoverable: Heating stays off until sensor recovers
+          }
+
           // Only run if thermostat mode is Heat
           auto mode = id(thermostat_mode).state;
           ESP_LOGD("thermostat", "Mode: %s", mode.c_str());
@@ -461,24 +553,35 @@ display:
     on_setup:
       - logger.log: "Nextion display initialized"
     lambda: |-
-      // Update temperature display with error handling
-      try {
-        auto temp_str = to_string(id(gazebo_temp).state);
-        auto desired_str = to_string(id(temp_desired).state);
-        auto mode_str = id(thermostat_mode).state;
-        auto heating_status = id(heating_state) ? "ON" : "OFF";
+      // Update temperature display with error handling and sensor status
+      auto temp_str = to_string(id(gazebo_temp).state);
+      auto desired_str = to_string(id(temp_desired).state);
+      auto mode_str = id(thermostat_mode).state;
+      auto heating_status = id(heating_state) ? "ON" : "OFF";
 
-        // Send temperature data to Nextion with error checking
-        if (!std::isnan(id(gazebo_temp).state)) {
-          it.send_command_printf("temp.val=%.0f", id(gazebo_temp).state);
-        }
-        it.send_command_printf("desired.val=%.0f", id(temp_desired).state);
-        it.send_command_printf("mode.txt=\"%s\"", mode_str.c_str());
-        it.send_command_printf("heating.txt=\"%s\"", heating_status);
-        it.send_command_printf("hysteresis.val=%.1f", id(hysteresis).state);
-      } catch (...) {
-        ESP_LOGW("nextion", "Error updating Nextion display - continuing without display");
+      // Sensor status for display
+      std::string sensor_status;
+      if (id(sensor_malfunction)) {
+        sensor_status = "MALFUNCTION";
+      } else if (id(sensor_bad_reads) > 0) {
+        sensor_status = "ERRORS: " + to_string(id(sensor_bad_reads));
+      } else {
+        sensor_status = "OK";
       }
+
+      // Send temperature data to Nextion with error checking
+      if (!std::isnan(id(gazebo_temp).state)) {
+        it.send_command_printf("temp.val=%.0f", id(gazebo_temp).state);
+      }
+      it.send_command_printf("desired.val=%.0f", id(temp_desired).state);
+      it.send_command_printf("mode.txt=\"%s\"", mode_str.c_str());
+      it.send_command_printf("heating.txt=\"%s\"", heating_status);
+      it.send_command_printf("hysteresis.val=%.1f", id(hysteresis).state);
+
+      // Display Integration: Show sensor status and error count
+      it.send_command_printf("sensor_status.txt=\"%s\"", sensor_status.c_str());
+      it.send_command_printf("bad_reads.val=%d", id(sensor_bad_reads));
+      it.send_command_printf("last_valid.val=%.1f", id(sensor_last_valid));
 
 
 # HTTP request component for weather API (if needed)
