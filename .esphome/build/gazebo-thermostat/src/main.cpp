@@ -97,8 +97,8 @@ void setup() {
   //             format: Gazebo Thermostat booted successfully
   //             logger_id: logger_logger_id
   //             args: []
-  //             level: DEBUG
   //             tag: main
+  //             level: DEBUG
   //           type_id: lambdaaction_id
   //         - delay: 2s
   //           type_id: delayaction_id
@@ -405,8 +405,8 @@ void setup() {
   //               - !lambda |-
   //                 x
   //             logger_id: logger_logger_id
-  //             level: DEBUG
   //             tag: main
+  //             level: DEBUG
   //           type_id: lambdaaction_id_3
   //       automation_id: automation_id_2
   //       trigger_id: sensor_sensorstatetrigger_id
@@ -518,8 +518,8 @@ void setup() {
   //             format: Temperature increased via Nextion
   //             logger_id: logger_logger_id
   //             args: []
-  //             level: DEBUG
   //             tag: main
+  //             level: DEBUG
   //           type_id: lambdaaction_id_4
   //       automation_id: automation_id_3
   //       trigger_id: binary_sensor_presstrigger_id
@@ -544,8 +544,8 @@ void setup() {
   //             format: Temperature decreased via Nextion
   //             logger_id: logger_logger_id
   //             args: []
-  //             level: DEBUG
   //             tag: main
+  //             level: DEBUG
   //           type_id: lambdaaction_id_5
   //       automation_id: automation_id_4
   //       trigger_id: binary_sensor_presstrigger_id_2
@@ -577,8 +577,8 @@ void setup() {
   //             format: Gazebo heating turned ON
   //             logger_id: logger_logger_id
   //             args: []
-  //             level: DEBUG
   //             tag: main
+  //             level: DEBUG
   //           type_id: lambdaaction_id_6
   //       automation_id: automation_id_5
   //       trigger_id: switch__switchturnontrigger_id
@@ -588,8 +588,8 @@ void setup() {
   //             format: Gazebo heating turned OFF
   //             logger_id: logger_logger_id
   //             args: []
-  //             level: DEBUG
   //             tag: main
+  //             level: DEBUG
   //           type_id: lambdaaction_id_7
   //       automation_id: automation_id_6
   //       trigger_id: switch__switchturnofftrigger_id
