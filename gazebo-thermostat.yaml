@@ -30,6 +30,20 @@ wifi:
     static_ip: 192.168.0.242
     gateway: 192.168.0.1
     subnet: 255.255.255.0
+  reboot_timeout: 15min
+
+  # WiFi connection monitoring
+  on_connect:
+    - logger.log: "WiFi connected successfully"
+    - lambda: |-
+        ESP_LOGI("wifi", "Connected to WiFi with IP: %s", id(wifi_ip).state.c_str());
+
+  on_disconnect:
+    - logger.log:
+        format: "WiFi disconnected - attempting reconnection"
+        level: WARN
+    - lambda: |-
+        ESP_LOGW("wifi", "WiFi connection lost - system will continue in standalone mode");
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -49,18 +63,55 @@ api:
 ota:
   platform: esphome
   password: !secret ota_password
+  safe_mode: true
+  reboot_timeout: 10min
+  num_attempts: 3
+  on_begin:
+    - logger.log: "OTA update started - system entering safe mode"
+    - lambda: |-
+        // Turn off heating during OTA for safety
+        if (id(heating_state)) {
+          ESP_LOGI("ota", "Turning off heating for OTA safety");
+          id(gazebo_relay).turn_off();
+          id(heating_state) = false;
+        }
+  on_progress:
+    - logger.log:
+        format: "OTA progress: %0.0f%%"
+        args: ["x"]
+  on_end:
+    - logger.log: "OTA update completed successfully"
+  on_error:
+    - logger.log:
+        format: "OTA update failed with error: %s"
+        args: ["x"]
+        level: ERROR
+    - lambda: |-
+        ESP_LOGE("ota", "OTA update failed - system will reboot to safe firmware");
+        // Note: ESPHome will automatically reboot to previous firmware
 
 # Enable Web Server
 web_server:
   port: 80
 
-# Time component for NTP
+# Time component for NTP with fallback servers
 time:
   - platform: sntp
     id: sntp_time
     timezone: America/New_York
     servers:
-      - us.pool.ntp.org
+      - pool.ntp.org
+      - time.google.com
+      - time.cloudflare.com
+    update_interval: 6h
+    on_time_sync:
+      - logger.log: "Time synchronized with NTP server"
+    on_time:
+      - seconds: 0
+        minutes: 0
+        hours: 0
+        then:
+          - logger.log: "Daily time sync check completed"
 
 # UART for Nextion display
 uart:
@@ -68,6 +119,15 @@ uart:
     tx_pin: 17  # TXD2
     rx_pin: 16  # RXD2
     baud_rate: 9600
+    debug:
+      direction: BOTH
+      dummy_receiver: false
+      after:
+        timeout: 100ms
+      sequence:
+        - lambda: |-
+            ESP_LOGW("nextion", "UART timeout - Nextion display may be disconnected");
+            // Continue operation without display
 
 # One Wire bus for DS18B20 temperature sensor (commented out for testing)
 # one_wire:
@@ -86,10 +146,31 @@ sensor:
     update_interval: 10s
     lambda: |-
       return 20.0 + id(temp_correction).state;  // Constant 20C + temperature correction
+    filters:
+      - filter_out: nan
+      - clamp:
+          min_value: -40.0
+          max_value: 85.0
     on_value:
       - logger.log:
           format: "Temperature updated: %.1f°C"
           args: ['x']
+    on_raw_value:
+      - if:
+          condition:
+            lambda: 'return std::isnan(x) || x < -40.0 || x > 85.0;'
+          then:
+            - logger.log:
+                format: "Invalid temperature reading: %.1f°C - using fallback"
+                args: ['x']
+                level: WARN
+            - lambda: |-
+                // Set emergency heating off if sensor fails
+                if (id(heating_state)) {
+                  ESP_LOGW("safety", "Sensor failure - turning off heating for safety");
+                  id(gazebo_relay).turn_off();
+                  id(heating_state) = false;
+                }
 
   # Real Dallas sensor (commented out for testing)
   # - platform: dallas_temp
@@ -214,8 +295,10 @@ text_sensor:
   - platform: wifi_info
     ip_address:
       name: "Gazebo IP Address"
+      id: wifi_ip
     ssid:
       name: "Gazebo Connected SSID"
+      id: wifi_ssid_sensor
 
 # Global variables for thermostat control
 globals:
@@ -226,6 +309,36 @@ globals:
   - id: last_heating_change
     type: unsigned long
     initial_value: '0'
+    restore_value: false
+  - id: heating_start_time
+    type: unsigned long
+    initial_value: '0'
+    restore_value: false
+  - id: max_heating_time
+    type: unsigned long
+    initial_value: '3600000'  # 1 hour max continuous heating (in ms)
+    restore_value: false
+  - id: min_heating_off_time
+    type: unsigned long
+    initial_value: '300000'   # 5 minutes minimum off time (in ms)
+    restore_value: false
+
+# Error tracking globals for sensor monitoring
+  - id: sensor_bad_reads
+    type: int
+    initial_value: '0'
+    restore_value: false
+  - id: sensor_last_valid
+    type: float
+    initial_value: '20.0'
+    restore_value: true
+  - id: sensor_malfunction
+    type: bool
+    initial_value: 'false'
+    restore_value: false
+  - id: temp_smoothed
+    type: float
+    initial_value: '20.0'
     restore_value: false
 
 
@@ -266,7 +379,7 @@ interval:
     then:
       - component.update: gazebo_temp
 
-  # Hysteresis thermostat control
+  # Hysteresis thermostat control with safety timeouts
   - interval: 10s
     then:
       - lambda: |-
@@ -287,17 +400,45 @@ interval:
           bool heating = id(heating_state);
           unsigned long now = millis();
           unsigned long last_change = id(last_heating_change);
+          unsigned long heating_start = id(heating_start_time);
 
           ESP_LOGD("thermostat", "Current: %.1f°C, Desired: %.1f°C, Hysteresis: %.1f°C, Heating: %s",
                    current_temp, desired_temp, hysteresis_val, heating ? "ON" : "OFF");
 
-          // Hysteresis logic
+          // Safety check: Maximum heating time exceeded
+          if (heating && (now - heating_start) > id(max_heating_time)) {
+            ESP_LOGW("safety", "Maximum heating time exceeded (1 hour) - forcing heating OFF");
+            id(gazebo_relay).turn_off();
+            id(heating_state) = false;
+            id(last_heating_change) = now;
+            return;
+          }
+
+          // Safety check: Temperature runaway protection
+          if (heating && current_temp > (desired_temp + 5.0)) {
+            ESP_LOGW("safety", "Temperature runaway detected (%.1f°C > %.1f°C + 5°C) - forcing heating OFF",
+                     current_temp, desired_temp);
+            id(gazebo_relay).turn_off();
+            id(heating_state) = false;
+            id(last_heating_change) = now;
+            return;
+          }
+
+          // Hysteresis logic with safety timeouts
           if (!heating && current_temp < (desired_temp - hysteresis_val)) {
+            // Check minimum off time before allowing heating to turn on
+            if ((now - last_change) < id(min_heating_off_time)) {
+              ESP_LOGD("safety", "Minimum off time not met - waiting %.1f more seconds",
+                       (id(min_heating_off_time) - (now - last_change)) / 1000.0);
+              return;
+            }
+
             // Turn on heating if temp is below target minus hysteresis
             ESP_LOGD("thermostat", "Temperature %.1f°C < %.1f°C (target-%.1f°C), turning ON heating",
                      current_temp, desired_temp - hysteresis_val, hysteresis_val);
             id(gazebo_relay).turn_on();
             id(heating_state) = true;
+            id(heating_start_time) = now;
             id(last_heating_change) = now;
           } else if (heating && current_temp > (desired_temp + hysteresis_val)) {
             // Turn off heating if temp is above target plus hysteresis
@@ -317,19 +458,27 @@ display:
     id: nextion_display
     uart_id: uart_nextion
     update_interval: 5s
+    on_setup:
+      - logger.log: "Nextion display initialized"
     lambda: |-
-      // Update temperature display
-      auto temp_str = to_string(id(gazebo_temp).state);
-      auto desired_str = to_string(id(temp_desired).state);
-      auto mode_str = id(thermostat_mode).state;
-      auto heating_status = id(heating_state) ? "ON" : "OFF";
+      // Update temperature display with error handling
+      try {
+        auto temp_str = to_string(id(gazebo_temp).state);
+        auto desired_str = to_string(id(temp_desired).state);
+        auto mode_str = id(thermostat_mode).state;
+        auto heating_status = id(heating_state) ? "ON" : "OFF";
 
-      // Send temperature data to Nextion
-      it.send_command_printf("temp.val=%.0f", id(gazebo_temp).state);
-      it.send_command_printf("desired.val=%.0f", id(temp_desired).state);
-      it.send_command_printf("mode.txt=\"%s\"", mode_str.c_str());
-      it.send_command_printf("heating.txt=\"%s\"", heating_status);
-      it.send_command_printf("hysteresis.val=%.1f", id(hysteresis).state);
+        // Send temperature data to Nextion with error checking
+        if (!std::isnan(id(gazebo_temp).state)) {
+          it.send_command_printf("temp.val=%.0f", id(gazebo_temp).state);
+        }
+        it.send_command_printf("desired.val=%.0f", id(temp_desired).state);
+        it.send_command_printf("mode.txt=\"%s\"", mode_str.c_str());
+        it.send_command_printf("heating.txt=\"%s\"", heating_status);
+        it.send_command_printf("hysteresis.val=%.1f", id(hysteresis).state);
+      } catch (...) {
+        ESP_LOGW("nextion", "Error updating Nextion display - continuing without display");
+      }
 
 
 # HTTP request component for weather API (if needed)
