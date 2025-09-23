@@ -13,6 +13,17 @@ esphome:
             ESP_LOGD("boot", "Hysteresis at boot: %.1f", id(hysteresis).state);
             // Initialize last_heating_change to current time to avoid safety delay on boot
             id(last_heating_change) = millis();
+        - delay: 10s  # Wait for Home Assistant API connection
+        - lambda: |-
+            ESP_LOGI("boot", "Checking Home Assistant sensors after 10s delay...");
+            ESP_LOGI("boot", "NH Meteo Temp state: %s", id(nh_meteo_temp).has_state() ? "HAS STATE" : "NO STATE");
+            ESP_LOGI("boot", "NH Meteo Humidity state: %s", id(nh_meteo_humidity).has_state() ? "HAS STATE" : "NO STATE");
+            if (id(nh_meteo_temp).has_state()) {
+              ESP_LOGI("boot", "NH Meteo Temp value: %.1f°C", id(nh_meteo_temp).state);
+            }
+            if (id(nh_meteo_humidity).has_state()) {
+              ESP_LOGI("boot", "NH Meteo Humidity value: %.1f%%", id(nh_meteo_humidity).state);
+            }
 
 esp32:
   board: esp32dev
@@ -59,6 +70,10 @@ logger:
 # Enable Home Assistant API
 api:
   reboot_timeout: 0s
+  services:
+    - service: test_homeassistant_connection
+      then:
+        - logger.log: "Testing Home Assistant connection via API service call"
 
 ota:
   platform: esphome
@@ -121,15 +136,7 @@ uart:
     tx_pin: 17  # TXD2
     rx_pin: 16  # RXD2
     baud_rate: 9600
-    debug:
-      direction: BOTH
-      dummy_receiver: false
-      after:
-        timeout: 100ms
-      sequence:
-        - lambda: |-
-            ESP_LOGW("nextion", "UART timeout - Nextion display may be disconnected");
-            // Continue operation without display
+    rx_buffer_size: 1024  # Increase buffer to handle Nextion data
 
 # One Wire bus for DS18B20 temperature sensor (commented out for testing)
 # one_wire:
@@ -146,6 +153,7 @@ sensor:
     accuracy_decimals: 1
     unit_of_measurement: "°C"
     update_interval: 10s
+    internal: true  # Don't send to Nextion display
     lambda: |-
       // Raw sensor reading (simulated)
       float raw_temp = 20.0 + id(temp_correction).state;
@@ -228,10 +236,12 @@ sensor:
   - platform: wifi_signal
     name: "Gazebo WiFi Signal"
     update_interval: 60s
+    internal: true  # Don't send to Nextion display
 
   # Uptime sensor
   - platform: uptime
     name: "Gazebo Uptime"
+    internal: true  # Don't send to Nextion display
 
   # Bad Read Counter for Home Assistant monitoring
   - platform: template
@@ -240,6 +250,7 @@ sensor:
     accuracy_decimals: 0
     unit_of_measurement: "reads"
     update_interval: 10s
+    internal: true  # Don't send to Nextion display
     lambda: |-
       return id(sensor_bad_reads);
 
@@ -250,8 +261,79 @@ sensor:
     accuracy_decimals: 1
     unit_of_measurement: "°C"
     update_interval: 10s
+    internal: true  # Don't send to Nextion display
     lambda: |-
       return id(sensor_last_valid);
+
+  # Nextion slider sensor - commented out due to protocol compatibility issues
+  # - platform: nextion
+  #   nextion_id: nextion_display
+  #   component_id: 4  # Confirmed in Nextion Editor: SliderO with ID 4
+  #   name: "Temperature Slider"
+  #   on_value:
+  #     then:
+  #       - logger.log:
+  #           format: "Nextion slider raw value received: %.1f"
+  #           args: ['x']
+  #       - lambda: |-
+  #           // Scale and validate slider input
+  #           float temp_value = x;
+  #           if (temp_value >= 10.0 && temp_value <= 35.0) {
+  #             ESP_LOGI("nextion", "Setting desired temperature to %.1f°C via slider", temp_value);
+  #             id(temp_desired).publish_state(temp_value);
+  #           } else {
+  #             ESP_LOGW("nextion", "Invalid slider value %.1f - must be 10-35°C", temp_value);
+  #           }
+
+
+  # Nextion slider sensor to capture user input
+  - platform: nextion
+    nextion_id: nextion_display
+    component_name: Slider0
+    name: "Temperature Slider"
+    internal: true
+    update_interval: 2s  # Check for slider changes every 2 seconds
+    on_value:
+      then:
+        - logger.log:
+            format: "Slider moved to: %.1f°C"
+            args: ['x']
+            level: INFO
+        - lambda: |-
+            // Only update if slider value is different from current desired temp
+            float slider_temp = x;
+            float current_desired = id(temp_desired).state;
+            if (abs(slider_temp - current_desired) > 0.5) {
+              ESP_LOGI("slider", "Slider changed from %.1f to %.1f - updating desired temperature",
+                       current_desired, slider_temp);
+              id(temp_desired).publish_state(slider_temp);
+            }
+
+  # Home Assistant weather sensors for page 0 display
+  - platform: homeassistant
+    name: "NH Meteo Temperature"
+    id: nh_meteo_temp
+    entity_id: sensor.nhmeteo_temperature
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "Home Assistant Temperature received: %.1f°C"
+            args: ['x']
+            level: INFO
+
+  - platform: homeassistant
+    name: "NH Meteo Humidity"
+    id: nh_meteo_humidity
+    entity_id: sensor.nhmeteo_humidity
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "Home Assistant Humidity received: %.1f%%"
+            args: ['x']
+            level: INFO
+
 
 # Binary sensors
 binary_sensor:
@@ -263,33 +345,10 @@ binary_sensor:
     name: "Sensor Malfunction"
     id: sensor_malfunction_status
     device_class: problem
+    internal: true  # Don't send to Nextion display
     lambda: |-
       return id(sensor_malfunction);
 
-  # Nextion touch events (received via UART)
-  - platform: nextion
-    nextion_id: nextion_display
-    page_id: 0
-    component_id: 2
-    name: "Temp Up Button"
-    on_press:
-      then:
-        - number.set:
-            id: temp_desired
-            value: !lambda 'return min(35.0f, id(temp_desired).state + 1.0f);'
-        - logger.log: "Temperature increased via Nextion"
-
-  - platform: nextion
-    nextion_id: nextion_display
-    page_id: 0
-    component_id: 3
-    name: "Temp Down Button"
-    on_press:
-      then:
-        - number.set:
-            id: temp_desired
-            value: !lambda 'return max(10.0f, id(temp_desired).state - 1.0f);'
-        - logger.log: "Temperature decreased via Nextion"
 
 
 # Switches and controls
@@ -300,9 +359,13 @@ switch:
     id: gazebo_relay
     restore_mode: RESTORE_DEFAULT_OFF
     on_turn_on:
-      - logger.log: "Gazebo heating turned ON"
+      - logger.log:
+          format: "🔥 RELAY ON - GPIO 12 HIGH - Heating should start now!"
+          level: WARN
     on_turn_off:
-      - logger.log: "Gazebo heating turned OFF"
+      - logger.log:
+          format: "❄️ RELAY OFF - GPIO 12 LOW - Heating should stop now!"
+          level: WARN
 
 # Number inputs for settings
 number:
@@ -361,15 +424,18 @@ text_sensor:
     ip_address:
       name: "Gazebo IP Address"
       id: wifi_ip
+      internal: true  # Don't send to Nextion display
     ssid:
       name: "Gazebo Connected SSID"
       id: wifi_ssid_sensor
+      internal: true  # Don't send to Nextion display
 
   # Sensor Status Text for Home Assistant
   - platform: template
     name: "Sensor Status"
     id: sensor_status_text
     update_interval: 10s
+    internal: true  # Don't send to Nextion display
     lambda: |-
       if (id(sensor_malfunction)) {
         return {"<<< SENSOR MALFUNCTION >>>"};
@@ -399,7 +465,7 @@ globals:
     restore_value: false
   - id: min_heating_off_time
     type: unsigned long
-    initial_value: '300000'   # 5 minutes minimum off time (in ms)
+    initial_value: '30000'    # 30 seconds minimum off time (in ms)
     restore_value: false
 
 # Error tracking globals for sensor monitoring
@@ -528,6 +594,7 @@ interval:
             // Turn on heating if temp is below target minus hysteresis
             ESP_LOGD("thermostat", "Temperature %.1f°C < %.1f°C (target-%.1f°C), turning ON heating",
                      current_temp, desired_temp - hysteresis_val, hysteresis_val);
+            ESP_LOGI("relay", "TURNING ON RELAY - GPIO 12 should go HIGH");
             id(gazebo_relay).turn_on();
             id(heating_state) = true;
             id(heating_start_time) = now;
@@ -543,45 +610,65 @@ interval:
             ESP_LOGD("thermostat", "No action needed - within hysteresis range");
           }
 
+  # Home Assistant sensor monitoring
+  - interval: 30s
+    then:
+      - lambda: |-
+          static bool first_check = true;
+          if (first_check || !id(nh_meteo_temp).has_state() || !id(nh_meteo_humidity).has_state()) {
+            ESP_LOGI("ha_check", "Home Assistant sensor status check:");
+            ESP_LOGI("ha_check", "  Temperature: %s", id(nh_meteo_temp).has_state() ? "Connected" : "No Data");
+            ESP_LOGI("ha_check", "  Humidity: %s", id(nh_meteo_humidity).has_state() ? "Connected" : "No Data");
+            if (id(nh_meteo_temp).has_state()) {
+              ESP_LOGI("ha_check", "  Temperature value: %.1f°C", id(nh_meteo_temp).state);
+            }
+            if (id(nh_meteo_humidity).has_state()) {
+              ESP_LOGI("ha_check", "  Humidity value: %.1f%%", id(nh_meteo_humidity).state);
+            }
+            if (first_check) first_check = false;
+          }
+
 
 # Nextion Display
 display:
   - platform: nextion
     id: nextion_display
     uart_id: uart_nextion
-    update_interval: 5s
+    update_interval: 10s  # Update display every 10 seconds
     on_setup:
-      - logger.log: "Nextion display initialized"
+      then:
+        - delay: 2s  # Wait for display to initialize
+        - lambda: |-
+            ESP_LOGI("nextion", "Display setup - checking page and components");
+            // Send command to get current page
+            id(nextion_display).send_command_printf("sendme");
+            // Test the correct component names
+            id(nextion_display).set_component_value("feels_like", 99);
+            id(nextion_display).set_component_value("rain", 77);
+            ESP_LOGI("nextion", "Sent test values: feels_like=99, rain=77");
     lambda: |-
-      // Update temperature display with error handling and sensor status
-      auto temp_str = to_string(id(gazebo_temp).state);
-      auto desired_str = to_string(id(temp_desired).state);
-      auto mode_str = id(thermostat_mode).state;
-      auto heating_status = id(heating_state) ? "ON" : "OFF";
-
-      // Sensor status for display
-      std::string sensor_status;
-      if (id(sensor_malfunction)) {
-        sensor_status = "MALFUNCTION";
-      } else if (id(sensor_bad_reads) > 0) {
-        sensor_status = "ERRORS: " + to_string(id(sensor_bad_reads));
-      } else {
-        sensor_status = "OK";
+      // Update Page 0 weather data from Home Assistant using correct component names
+      if (id(nh_meteo_temp).has_state()) {
+        // Use correct component name: feels_like (number component, so send integer)
+        int temp_int = (int)round(id(nh_meteo_temp).state);
+        it.set_component_value("feels_like", temp_int);
+        ESP_LOGI("display", "Page 0: Updated feels_like temperature: %d°C", temp_int);
+      }
+      if (id(nh_meteo_humidity).has_state()) {
+        // Use correct component name: rain (number component, so send integer)
+        int humidity_int = (int)round(id(nh_meteo_humidity).state);
+        it.set_component_value("rain", humidity_int);
+        ESP_LOGI("display", "Page 0: Updated rain humidity: %d%%", humidity_int);
       }
 
-      // Send temperature data to Nextion with error checking
-      if (!std::isnan(id(gazebo_temp).state)) {
-        it.send_command_printf("temp.val=%.0f", id(gazebo_temp).state);
-      }
-      it.send_command_printf("desired.val=%.0f", id(temp_desired).state);
-      it.send_command_printf("mode.txt=\"%s\"", mode_str.c_str());
-      it.send_command_printf("heating.txt=\"%s\"", heating_status);
-      it.send_command_printf("hysteresis.val=%.1f", id(hysteresis).state);
+      // Update Page 3 thermostat data (current thermostat page)
+      // Only update current temperature display (bottom left - component n1)
+      it.set_component_value("n1", (int)id(gazebo_temp).state);
 
-      // Display Integration: Show sensor status and error count
-      it.send_command_printf("sensor_status.txt=\"%s\"", sensor_status.c_str());
-      it.send_command_printf("bad_reads.val=%d", id(sensor_bad_reads));
-      it.send_command_printf("last_valid.val=%.1f", id(sensor_last_valid));
+      // DON'T update desired temperature (n0) - let slider control this completely
+
+      ESP_LOGI("display", "Page 3: n1(Current)=%.0f°C (n0 controlled by slider)",
+               id(gazebo_temp).state);
 
 
 # HTTP request component for weather API (if needed)
