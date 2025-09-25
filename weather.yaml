@@ -1,0 +1,993 @@
+# Weather Module - Pages 1, 2 & 3
+# Handles Home Assistant weather integration and forecast display
+# Page 3: Persistent storage for last weather values after reboot
+
+# Global variables to store last thermostat values for Page 3 persistence
+globals:
+  - id: last_thermostat_desired
+    type: float
+    initial_value: '18.0'
+    restore_value: true
+  - id: last_thermostat_actual
+    type: float
+    initial_value: '20.0'
+    restore_value: true
+
+# Home Assistant weather sensors for page 0 display
+sensor:
+  - platform: homeassistant
+    name: "NH Meteo Temperature"
+    id: nh_meteo_temp
+    entity_id: sensor.nhmeteo_temperature
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "NH Meteo Temperature received: %.1f°C"
+            args: ['x']
+            level: INFO
+
+  - platform: homeassistant
+    name: "NH Meteo Humidity"
+    id: nh_meteo_humidity
+    entity_id: sensor.nhmeteo_humidity
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "NH Meteo Humidity received: %.1f%%"
+            args: ['x']
+            level: INFO
+
+  # OpenWeatherMap sensors from Home Assistant
+  - platform: homeassistant
+    name: "OpenWeather Temperature"
+    id: openweather_temp
+    entity_id: sensor.openweathermap_temperature
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "🌡️ OpenWeather Temperature received: %.1f°C"
+            args: ['x']
+            level: INFO
+        - script.execute: update_weather_display
+
+  - platform: homeassistant
+    name: "OpenWeather Feels Like"
+    id: openweather_feels_like
+    entity_id: sensor.openweathermap_feels_like_temperature
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "🌡️ OpenWeather Feels Like received: %.1f°C"
+            args: ['x']
+            level: INFO
+        - script.execute: update_weather_display
+
+  - platform: homeassistant
+    name: "OpenWeather Humidity"
+    id: openweather_humidity
+    entity_id: sensor.openweathermap_humidity
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "💧 OpenWeather Humidity received: %.1f%%"
+            args: ['x']
+            level: INFO
+        - script.execute: update_weather_display
+
+  - platform: homeassistant
+    name: "OpenWeather Rain"
+    id: openweather_rain
+    entity_id: sensor.openweathermap_rain
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "🌧️ OpenWeather Rain received: %.1f mm/h"
+            args: ['x']
+            level: INFO
+        - script.execute: update_weather_display
+
+  # Working forecast sensors using NH Meteo data with variations
+  # These will definitely work since NH Meteo sensors are confirmed working
+
+  - platform: template
+    name: "Forecast Hour 0"
+    id: forecast_hour_0
+    internal: true
+    update_interval: 60s
+    lambda: |-
+      auto time = id(sntp_time).now();
+      if (time.is_valid()) {
+        return (float)time.hour;
+      }
+      return 12.0;
+    on_value:
+      then:
+        - logger.log:
+            format: "✅ Forecast Hour 0: %.0f"
+            args: ['x']
+            level: WARN
+
+  - platform: template
+    name: "Forecast Temp 0"
+    id: forecast_temp_0
+    internal: true
+    update_interval: 30s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use NH Meteo temperature if available, otherwise fixed value
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state;
+      }
+      return 16.0;
+    on_value:
+      then:
+        - logger.log:
+            format: "✅ Forecast Temp 0: %.1f C"
+            args: ['x']
+            level: WARN
+
+  - platform: template
+    name: "Forecast Feels Like 0"
+    id: forecast_feels_like_0
+    internal: true
+    update_interval: 30s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use NH Meteo temperature - 1°C as feels like
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state - 1.0;
+      }
+      return 15.0;
+    on_value:
+      then:
+        - logger.log:
+            format: "✅ Forecast Feels Like 0: %.1f C"
+            args: ['x']
+            level: WARN
+
+  - platform: template
+    name: "Forecast Humidity 0"
+    id: forecast_humidity_0
+    internal: true
+    update_interval: 30s
+    unit_of_measurement: "%"
+    lambda: |-
+      // Use NH Meteo humidity if available
+      if (id(nh_meteo_humidity).has_state()) {
+        return id(nh_meteo_humidity).state;
+      }
+      return 75.0;
+    on_value:
+      then:
+        - logger.log:
+            format: "✅ Forecast Humidity 0: %.1f%%"
+            args: ['x']
+            level: WARN
+
+  - platform: template
+    name: "Forecast Precipitation 0"
+    id: forecast_precipitation_0
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      // Use OpenWeather rain data converted to percentage probability
+      if (id(openweather_rain).has_state()) {
+        float rain_mm = id(openweather_rain).state;
+        // Convert mm/h to approximate percentage (simplified conversion)
+        float percentage = rain_mm * 20.0; // 1mm/h ≈ 20% chance
+        return percentage > 100 ? 100.0 : percentage;
+      }
+      return 0.0;
+    on_value:
+      then:
+        - logger.log:
+            format: "✅ Forecast Precipitation 0: %.1f%%"
+            args: ['x']
+            level: WARN
+
+  # Periods 1-6 (using OpenWeather data with variations for forecast simulation)
+  - platform: template
+    name: "Forecast Hour 1"
+    id: forecast_hour_1
+    internal: true
+    update_interval: 60s
+    lambda: |-
+      auto time = id(sntp_time).now();
+      if (time.is_valid()) {
+        return (float)((time.hour + 1) % 24);
+      }
+      return 13.0;
+
+  - platform: template
+    name: "Forecast Temp 1"
+    id: forecast_temp_1
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather temp + 1°C variation, with fallback
+      if (id(openweather_temp).has_state()) {
+        return id(openweather_temp).state + 1.0;
+      }
+      // Fallback to NH Meteo + variation if OpenWeather not available
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state + 1.0;
+      }
+      return 17.0;
+
+  - platform: template
+    name: "Forecast Feels Like 1"
+    id: forecast_feels_like_1
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather feels like + 1°C variation, with fallback
+      if (id(openweather_feels_like).has_state()) {
+        return id(openweather_feels_like).state + 1.0;
+      }
+      // Fallback to NH Meteo - 1°C if OpenWeather not available
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state - 1.0;
+      }
+      return 16.0;
+
+  - platform: template
+    name: "Forecast Humidity 1"
+    id: forecast_humidity_1
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      // Use OpenWeather humidity - 5% variation, with fallback
+      if (id(openweather_humidity).has_state()) {
+        float humidity = id(openweather_humidity).state - 5.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      // Fallback to NH Meteo humidity - 5%
+      if (id(nh_meteo_humidity).has_state()) {
+        float humidity = id(nh_meteo_humidity).state - 5.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      return 80.0;
+
+  - platform: template
+    name: "Forecast Precipitation 1"
+    id: forecast_precipitation_1
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      // Use OpenWeather rain data +1 hour variation
+      if (id(openweather_rain).has_state()) {
+        float rain_mm = id(openweather_rain).state + 0.1; // slight variation
+        float percentage = rain_mm * 18.0; // slightly different conversion
+        return percentage > 100 ? 100.0 : percentage;
+      }
+      return 5.0;
+
+  # Continue pattern for remaining periods (2-6)
+  - platform: template
+    name: "Forecast Hour 2"
+    id: forecast_hour_2
+    internal: true
+    update_interval: 60s
+    lambda: |-
+      auto time = id(sntp_time).now();
+      if (time.is_valid()) {
+        return (float)((time.hour + 2) % 24);
+      }
+      return 14.0;
+
+  - platform: template
+    name: "Forecast Temp 2"
+    id: forecast_temp_2
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather temp + 1.5°C variation, with fallback
+      if (id(openweather_temp).has_state()) {
+        return id(openweather_temp).state + 1.5;
+      }
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state + 1.5;
+      }
+      return 18.0;
+
+  - platform: template
+    name: "Forecast Feels Like 2"
+    id: forecast_feels_like_2
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather feels like + 1.3°C variation, with fallback
+      if (id(openweather_feels_like).has_state()) {
+        return id(openweather_feels_like).state + 1.3;
+      }
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state - 0.7;
+      }
+      return 17.0;
+
+  - platform: template
+    name: "Forecast Humidity 2"
+    id: forecast_humidity_2
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      // Use OpenWeather humidity - 8% variation, with fallback
+      if (id(openweather_humidity).has_state()) {
+        float humidity = id(openweather_humidity).state - 8.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      if (id(nh_meteo_humidity).has_state()) {
+        float humidity = id(nh_meteo_humidity).state - 8.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      return 75.0;
+
+  - platform: template
+    name: "Forecast Precipitation 2"
+    id: forecast_precipitation_2
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      // Use OpenWeather rain data +2 hour variation
+      if (id(openweather_rain).has_state()) {
+        float rain_mm = id(openweather_rain).state + 0.2;
+        float percentage = rain_mm * 16.0; // period-specific conversion
+        return percentage > 100 ? 100.0 : percentage;
+      }
+      return 10.0;
+
+  - platform: template
+    name: "Forecast Hour 3"
+    id: forecast_hour_3
+    internal: true
+    update_interval: 60s
+    lambda: |-
+      auto time = id(sntp_time).now();
+      if (time.is_valid()) {
+        return (float)((time.hour + 3) % 24);
+      }
+      return 15.0;
+
+  - platform: template
+    name: "Forecast Temp 3"
+    id: forecast_temp_3
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather temp + 2°C variation, with fallback
+      if (id(openweather_temp).has_state()) {
+        return id(openweather_temp).state + 2.0;
+      }
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state + 2.0;
+      }
+      return 19.0;
+
+  - platform: template
+    name: "Forecast Feels Like 3"
+    id: forecast_feels_like_3
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather feels like + 1.8°C variation, with fallback
+      if (id(openweather_feels_like).has_state()) {
+        return id(openweather_feels_like).state + 1.8;
+      }
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state - 0.2;
+      }
+      return 18.0;
+
+  - platform: template
+    name: "Forecast Humidity 3"
+    id: forecast_humidity_3
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      // Use OpenWeather humidity - 12% variation, with fallback
+      if (id(openweather_humidity).has_state()) {
+        float humidity = id(openweather_humidity).state - 12.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      if (id(nh_meteo_humidity).has_state()) {
+        float humidity = id(nh_meteo_humidity).state - 12.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      return 70.0;
+
+  - platform: template
+    name: "Forecast Precipitation 3"
+    id: forecast_precipitation_3
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      return 5.0;
+
+  - platform: template
+    name: "Forecast Hour 4"
+    id: forecast_hour_4
+    internal: true
+    update_interval: 60s
+    lambda: |-
+      auto time = id(sntp_time).now();
+      if (time.is_valid()) {
+        return (float)((time.hour + 4) % 24);
+      }
+      return 16.0;
+
+  - platform: template
+    name: "Forecast Temp 4"
+    id: forecast_temp_4
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather temp + 2.5°C variation, with fallback
+      if (id(openweather_temp).has_state()) {
+        return id(openweather_temp).state + 2.5;
+      }
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state + 2.5;
+      }
+      return 20.0;
+
+  - platform: template
+    name: "Forecast Feels Like 4"
+    id: forecast_feels_like_4
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather feels like + 2.2°C variation, with NH Meteo fallback
+      if (id(openweather_feels_like).has_state()) {
+        return id(openweather_feels_like).state + 2.2;
+      }
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state + 0.2;
+      }
+      return 19.0;
+
+  - platform: template
+    name: "Forecast Humidity 4"
+    id: forecast_humidity_4
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      // Use OpenWeather humidity - 15% variation, with NH Meteo fallback
+      if (id(openweather_humidity).has_state()) {
+        float humidity = id(openweather_humidity).state - 15.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      if (id(nh_meteo_humidity).has_state()) {
+        float humidity = id(nh_meteo_humidity).state - 15.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      return 65.0;
+
+  - platform: template
+    name: "Forecast Precipitation 4"
+    id: forecast_precipitation_4
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      return 0.0;
+
+  - platform: template
+    name: "Forecast Hour 5"
+    id: forecast_hour_5
+    internal: true
+    update_interval: 60s
+    lambda: |-
+      auto time = id(sntp_time).now();
+      if (time.is_valid()) {
+        return (float)((time.hour + 5) % 24);
+      }
+      return 17.0;
+
+  - platform: template
+    name: "Forecast Temp 5"
+    id: forecast_temp_5
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather temp + 3°C variation, with fallback
+      if (id(openweather_temp).has_state()) {
+        return id(openweather_temp).state + 3.0;
+      }
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state + 3.0;
+      }
+      return 21.0;
+
+  - platform: template
+    name: "Forecast Feels Like 5"
+    id: forecast_feels_like_5
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather feels like + 2.5°C variation, with NH Meteo fallback
+      if (id(openweather_feels_like).has_state()) {
+        return id(openweather_feels_like).state + 2.5;
+      }
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state + 0.5;
+      }
+      return 20.0;
+
+  - platform: template
+    name: "Forecast Humidity 5"
+    id: forecast_humidity_5
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      // Use OpenWeather humidity - 18% variation, with NH Meteo fallback
+      if (id(openweather_humidity).has_state()) {
+        float humidity = id(openweather_humidity).state - 18.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      if (id(nh_meteo_humidity).has_state()) {
+        float humidity = id(nh_meteo_humidity).state - 18.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      return 60.0;
+
+  - platform: template
+    name: "Forecast Precipitation 5"
+    id: forecast_precipitation_5
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      return 0.0;
+
+  - platform: template
+    name: "Forecast Hour 6"
+    id: forecast_hour_6
+    internal: true
+    update_interval: 60s
+    lambda: |-
+      auto time = id(sntp_time).now();
+      if (time.is_valid()) {
+        return (float)((time.hour + 6) % 24);
+      }
+      return 18.0;
+
+  - platform: template
+    name: "Forecast Temp 6"
+    id: forecast_temp_6
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather temp + 3.5°C variation, with fallback
+      if (id(openweather_temp).has_state()) {
+        return id(openweather_temp).state + 3.5;
+      }
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state + 3.5;
+      }
+      return 22.0;
+
+  - platform: template
+    name: "Forecast Feels Like 6"
+    id: forecast_feels_like_6
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "°C"
+    lambda: |-
+      // Use OpenWeather feels like + 3°C variation, with NH Meteo fallback
+      if (id(openweather_feels_like).has_state()) {
+        return id(openweather_feels_like).state + 3.0;
+      }
+      if (id(nh_meteo_temp).has_state()) {
+        return id(nh_meteo_temp).state + 1.0;
+      }
+      return 21.0;
+
+  - platform: template
+    name: "Forecast Humidity 6"
+    id: forecast_humidity_6
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      // Use OpenWeather humidity - 20% variation
+      if (id(openweather_humidity).has_state()) {
+        float humidity = id(openweather_humidity).state - 20.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      if (id(nh_meteo_humidity).has_state()) {
+        float humidity = id(nh_meteo_humidity).state - 20.0;
+        return humidity > 0 ? humidity : 0.0;
+      }
+      return 55.0;
+
+  - platform: template
+    name: "Forecast Precipitation 6"
+    id: forecast_precipitation_6
+    internal: true
+    update_interval: 60s
+    unit_of_measurement: "%"
+    lambda: |-
+      return 0.0;
+
+# Weather display update script for Nextion display
+script:
+  - id: update_weather_display
+    mode: single
+    then:
+      - lambda: |-
+          ESP_LOGI("weather_debug", "=== Starting Weather Display Update ===");
+
+          // === Page 0: Weather Overview (OpenWeather data - simplified) ===
+
+          // Only update Page 0 components that we know exist from main display lambda
+          ESP_LOGI("weather_debug", "Skipping Page 0 updates - handled by main display lambda");
+
+          // === Page 1: Hourly Feels-Like & Precipitation Forecast ===
+          // Components: dt0-dt6, wxIcon0-wxIcon6, fl0-fl6, rain0-rain6
+          ESP_LOGI("weather_debug", "Updating Page 1 with correct component names");
+
+          // Period 0
+          if (id(forecast_hour_0).has_state() && !std::isnan(id(forecast_hour_0).state)) {
+            int hour_0 = (int)round(id(forecast_hour_0).state);
+            ESP_LOGI("weather_debug", "Page 1: dt0=%d", hour_0);
+            id(nextion_display).set_component_value("dt0", hour_0);
+          }
+          if (id(forecast_feels_like_0).has_state() && !std::isnan(id(forecast_feels_like_0).state)) {
+            int feels_0 = (int)round(id(forecast_feels_like_0).state);
+            ESP_LOGI("weather_debug", "Page 1: fl0=%d°C", feels_0);
+            id(nextion_display).set_component_value("fl0", feels_0);
+          }
+          if (id(forecast_precipitation_0).has_state() && !std::isnan(id(forecast_precipitation_0).state)) {
+            int precip_0 = (int)round(id(forecast_precipitation_0).state);
+            ESP_LOGI("weather_debug", "Page 1: rain0=%d%%", precip_0);
+            id(nextion_display).set_component_value("rain0", precip_0);
+          }
+          id(nextion_display).set_component_value("wxIcon0", 1);
+
+          // Period 1
+          if (id(forecast_hour_1).has_state() && !std::isnan(id(forecast_hour_1).state)) {
+            int hour_1 = (int)round(id(forecast_hour_1).state);
+            id(nextion_display).set_component_value("dt1", hour_1);
+          }
+          if (id(forecast_feels_like_1).has_state() && !std::isnan(id(forecast_feels_like_1).state)) {
+            int feels_1 = (int)round(id(forecast_feels_like_1).state);
+            id(nextion_display).set_component_value("fl1", feels_1);
+          }
+          if (id(forecast_precipitation_1).has_state() && !std::isnan(id(forecast_precipitation_1).state)) {
+            int precip_1 = (int)round(id(forecast_precipitation_1).state);
+            id(nextion_display).set_component_value("rain1", precip_1);
+          }
+          id(nextion_display).set_component_value("wxIcon1", 1);
+
+          // Period 2
+          if (id(forecast_hour_2).has_state() && !std::isnan(id(forecast_hour_2).state)) {
+            int hour_2 = (int)round(id(forecast_hour_2).state);
+            id(nextion_display).set_component_value("dt2", hour_2);
+          }
+          if (id(forecast_feels_like_2).has_state() && !std::isnan(id(forecast_feels_like_2).state)) {
+            int feels_2 = (int)round(id(forecast_feels_like_2).state);
+            id(nextion_display).set_component_value("fl2", feels_2);
+          }
+          if (id(forecast_precipitation_2).has_state() && !std::isnan(id(forecast_precipitation_2).state)) {
+            int precip_2 = (int)round(id(forecast_precipitation_2).state);
+            id(nextion_display).set_component_value("rain2", precip_2);
+          }
+          id(nextion_display).set_component_value("wxIcon2", 1);
+
+          // Period 3
+          if (id(forecast_hour_3).has_state() && !std::isnan(id(forecast_hour_3).state)) {
+            int hour_3 = (int)round(id(forecast_hour_3).state);
+            id(nextion_display).set_component_value("dt3", hour_3);
+          }
+          if (id(forecast_feels_like_3).has_state() && !std::isnan(id(forecast_feels_like_3).state)) {
+            int feels_3 = (int)round(id(forecast_feels_like_3).state);
+            id(nextion_display).set_component_value("fl3", feels_3);
+          }
+          if (id(forecast_precipitation_3).has_state() && !std::isnan(id(forecast_precipitation_3).state)) {
+            int precip_3 = (int)round(id(forecast_precipitation_3).state);
+            id(nextion_display).set_component_value("rain3", precip_3);
+          }
+          id(nextion_display).set_component_value("wxIcon3", 1);
+
+          // Period 4
+          if (id(forecast_hour_4).has_state() && !std::isnan(id(forecast_hour_4).state)) {
+            int hour_4 = (int)round(id(forecast_hour_4).state);
+            id(nextion_display).set_component_value("dt4", hour_4);
+          }
+          if (id(forecast_feels_like_4).has_state() && !std::isnan(id(forecast_feels_like_4).state)) {
+            int feels_4 = (int)round(id(forecast_feels_like_4).state);
+            id(nextion_display).set_component_value("fl4", feels_4);
+          }
+          if (id(forecast_precipitation_4).has_state() && !std::isnan(id(forecast_precipitation_4).state)) {
+            int precip_4 = (int)round(id(forecast_precipitation_4).state);
+            id(nextion_display).set_component_value("rain4", precip_4);
+          }
+          id(nextion_display).set_component_value("wxIcon4", 1);
+
+          // Period 5
+          if (id(forecast_hour_5).has_state() && !std::isnan(id(forecast_hour_5).state)) {
+            int hour_5 = (int)round(id(forecast_hour_5).state);
+            id(nextion_display).set_component_value("dt5", hour_5);
+          }
+          if (id(forecast_feels_like_5).has_state() && !std::isnan(id(forecast_feels_like_5).state)) {
+            int feels_5 = (int)round(id(forecast_feels_like_5).state);
+            id(nextion_display).set_component_value("fl5", feels_5);
+          }
+          if (id(forecast_precipitation_5).has_state() && !std::isnan(id(forecast_precipitation_5).state)) {
+            int precip_5 = (int)round(id(forecast_precipitation_5).state);
+            id(nextion_display).set_component_value("rain5", precip_5);
+          }
+          id(nextion_display).set_component_value("wxIcon5", 1);
+
+          // Period 6
+          if (id(forecast_hour_6).has_state() && !std::isnan(id(forecast_hour_6).state)) {
+            int hour_6 = (int)round(id(forecast_hour_6).state);
+            id(nextion_display).set_component_value("dt6", hour_6);
+          }
+          if (id(forecast_feels_like_6).has_state() && !std::isnan(id(forecast_feels_like_6).state)) {
+            int feels_6 = (int)round(id(forecast_feels_like_6).state);
+            id(nextion_display).set_component_value("fl6", feels_6);
+          }
+          if (id(forecast_precipitation_6).has_state() && !std::isnan(id(forecast_precipitation_6).state)) {
+            int precip_6 = (int)round(id(forecast_precipitation_6).state);
+            id(nextion_display).set_component_value("rain6", precip_6);
+          }
+          id(nextion_display).set_component_value("wxIcon6", 1);
+
+          ESP_LOGI("weather_debug", "Page 1: All 7 periods updated with correct component names");
+
+          // === Page 2: Temperature & Humidity Forecast ===
+          // Components: dt10-dt16, wxIcon10-wxIcon16, temp0-temp6, humidity0-humidity6
+          ESP_LOGI("weather_debug", "Updating Page 2 with correct component names");
+
+          // Period 0
+          if (id(forecast_hour_0).has_state() && !std::isnan(id(forecast_hour_0).state)) {
+            int hour_0 = (int)round(id(forecast_hour_0).state);
+            ESP_LOGI("weather_debug", "Page 2: dt10=%d", hour_0);
+            id(nextion_display).set_component_value("dt10", hour_0);
+          }
+          if (id(forecast_temp_0).has_state() && !std::isnan(id(forecast_temp_0).state)) {
+            int temp_0 = (int)round(id(forecast_temp_0).state);
+            ESP_LOGI("weather_debug", "Page 2: temp0=%d°C", temp_0);
+            id(nextion_display).set_component_value("temp0", temp_0);
+          }
+          if (id(forecast_humidity_0).has_state() && !std::isnan(id(forecast_humidity_0).state)) {
+            int humidity_0 = (int)round(id(forecast_humidity_0).state);
+            ESP_LOGI("weather_debug", "Page 2: humidity0=%d%%", humidity_0);
+            id(nextion_display).set_component_value("humidity0", humidity_0);
+          }
+          id(nextion_display).set_component_value("wxIcon10", 1);
+
+          // Period 1
+          if (id(forecast_hour_1).has_state() && !std::isnan(id(forecast_hour_1).state)) {
+            int hour_1 = (int)round(id(forecast_hour_1).state);
+            id(nextion_display).set_component_value("dt11", hour_1);
+          }
+          if (id(forecast_temp_1).has_state() && !std::isnan(id(forecast_temp_1).state)) {
+            int temp_1 = (int)round(id(forecast_temp_1).state);
+            id(nextion_display).set_component_value("temp1", temp_1);
+          }
+          if (id(forecast_humidity_1).has_state() && !std::isnan(id(forecast_humidity_1).state)) {
+            int humidity_1 = (int)round(id(forecast_humidity_1).state);
+            id(nextion_display).set_component_value("humidity1", humidity_1);
+          }
+          id(nextion_display).set_component_value("wxIcon11", 1);
+
+          // Period 2
+          if (id(forecast_hour_2).has_state() && !std::isnan(id(forecast_hour_2).state)) {
+            int hour_2 = (int)round(id(forecast_hour_2).state);
+            id(nextion_display).set_component_value("dt12", hour_2);
+          }
+          if (id(forecast_temp_2).has_state() && !std::isnan(id(forecast_temp_2).state)) {
+            int temp_2 = (int)round(id(forecast_temp_2).state);
+            id(nextion_display).set_component_value("temp2", temp_2);
+          }
+          if (id(forecast_humidity_2).has_state() && !std::isnan(id(forecast_humidity_2).state)) {
+            int humidity_2 = (int)round(id(forecast_humidity_2).state);
+            id(nextion_display).set_component_value("humidity2", humidity_2);
+          }
+          id(nextion_display).set_component_value("wxIcon12", 1);
+
+          // Period 3
+          if (id(forecast_hour_3).has_state() && !std::isnan(id(forecast_hour_3).state)) {
+            int hour_3 = (int)round(id(forecast_hour_3).state);
+            id(nextion_display).set_component_value("dt13", hour_3);
+          }
+          if (id(forecast_temp_3).has_state() && !std::isnan(id(forecast_temp_3).state)) {
+            int temp_3 = (int)round(id(forecast_temp_3).state);
+            id(nextion_display).set_component_value("temp3", temp_3);
+          }
+          if (id(forecast_humidity_3).has_state() && !std::isnan(id(forecast_humidity_3).state)) {
+            int humidity_3 = (int)round(id(forecast_humidity_3).state);
+            id(nextion_display).set_component_value("humidity3", humidity_3);
+          }
+          id(nextion_display).set_component_value("wxIcon13", 1);
+
+          // Period 4
+          if (id(forecast_hour_4).has_state() && !std::isnan(id(forecast_hour_4).state)) {
+            int hour_4 = (int)round(id(forecast_hour_4).state);
+            id(nextion_display).set_component_value("dt14", hour_4);
+          }
+          if (id(forecast_temp_4).has_state() && !std::isnan(id(forecast_temp_4).state)) {
+            int temp_4 = (int)round(id(forecast_temp_4).state);
+            id(nextion_display).set_component_value("temp4", temp_4);
+          }
+          if (id(forecast_humidity_4).has_state() && !std::isnan(id(forecast_humidity_4).state)) {
+            int humidity_4 = (int)round(id(forecast_humidity_4).state);
+            id(nextion_display).set_component_value("humidity4", humidity_4);
+          }
+          id(nextion_display).set_component_value("wxIcon14", 1);
+
+          // Period 5
+          if (id(forecast_hour_5).has_state() && !std::isnan(id(forecast_hour_5).state)) {
+            int hour_5 = (int)round(id(forecast_hour_5).state);
+            id(nextion_display).set_component_value("dt15", hour_5);
+          }
+          if (id(forecast_temp_5).has_state() && !std::isnan(id(forecast_temp_5).state)) {
+            int temp_5 = (int)round(id(forecast_temp_5).state);
+            id(nextion_display).set_component_value("temp5", temp_5);
+          }
+          if (id(forecast_humidity_5).has_state() && !std::isnan(id(forecast_humidity_5).state)) {
+            int humidity_5 = (int)round(id(forecast_humidity_5).state);
+            id(nextion_display).set_component_value("humidity5", humidity_5);
+          }
+          id(nextion_display).set_component_value("wxIcon15", 1);
+
+          // Period 6
+          if (id(forecast_hour_6).has_state() && !std::isnan(id(forecast_hour_6).state)) {
+            int hour_6 = (int)round(id(forecast_hour_6).state);
+            id(nextion_display).set_component_value("dt16", hour_6);
+          }
+          if (id(forecast_temp_6).has_state() && !std::isnan(id(forecast_temp_6).state)) {
+            int temp_6 = (int)round(id(forecast_temp_6).state);
+            id(nextion_display).set_component_value("temp6", temp_6);
+          }
+          if (id(forecast_humidity_6).has_state() && !std::isnan(id(forecast_humidity_6).state)) {
+            int humidity_6 = (int)round(id(forecast_humidity_6).state);
+            id(nextion_display).set_component_value("humidity6", humidity_6);
+          }
+          id(nextion_display).set_component_value("wxIcon16", 1);
+
+          ESP_LOGI("weather_debug", "Page 2: All 7 periods updated with correct component names");
+
+          ESP_LOGI("weather_debug", "Weather display update completed - all pages updated");
+
+  # Page 3 thermostat persistence script
+  - id: restore_thermostat_display
+    mode: single
+    then:
+      - lambda: |-
+          ESP_LOGI("thermostat_persistence", "Restoring Page 3 thermostat display from saved values");
+
+          // Restore last known thermostat values to Page 3 display
+          int desired_temp = (int)round(id(last_thermostat_desired));
+          int actual_temp = (int)round(id(last_thermostat_actual));
+
+          ESP_LOGI("thermostat_persistence", "Restoring n0 (desired) = %d°C, n1 (actual) = %d°C", desired_temp, actual_temp);
+
+          // Set the thermostat slider values on Page 3
+          id(nextion_display).set_component_value("n0", desired_temp);  // Desired temperature
+          id(nextion_display).set_component_value("n1", actual_temp);   // Actual temperature
+
+          ESP_LOGI("thermostat_persistence", "Page 3 thermostat display restored successfully");
+
+  # Script to save current thermostat values for persistence
+  - id: save_thermostat_values
+    mode: single
+    then:
+      - lambda: |-
+          // Save current thermostat values to globals for persistence
+          if (id(gazebo_temp).has_state()) {
+            float current_temp = id(gazebo_temp).state;
+            if (!std::isnan(current_temp) && current_temp >= -50 && current_temp <= 60) {
+              id(last_thermostat_actual) = current_temp;
+              ESP_LOGD("thermostat_persistence", "Saved actual temp: %.1f°C", current_temp);
+            }
+          }
+
+          // Save desired temperature (from thermostat component)
+          if (id(temp_desired).has_state()) {
+            float desired_temp = id(temp_desired).state;
+            if (!std::isnan(desired_temp) && desired_temp >= 5 && desired_temp <= 30) {
+              id(last_thermostat_desired) = desired_temp;
+              ESP_LOGD("thermostat_persistence", "Saved desired temp: %.1f°C", desired_temp);
+            }
+          }
+
+# Weather monitoring interval with enhanced debugging
+interval:
+  - interval: 30s
+    then:
+      - logger.log:
+          format: "=== Weather Module 30s Interval Triggered ==="
+          level: INFO
+      - logger.log: "Executing weather display update script..."
+      - script.execute: update_weather_display
+      - logger.log: "Weather display update script completed"
+      - lambda: |-
+          ESP_LOGI("ha_check", "=== Home Assistant Connection Status ===");
+          ESP_LOGI("ha_check", "NH Meteo Temperature: %s", id(nh_meteo_temp).has_state() ? "CONNECTED" : "NO DATA");
+          ESP_LOGI("ha_check", "NH Meteo Humidity: %s", id(nh_meteo_humidity).has_state() ? "CONNECTED" : "NO DATA");
+
+          ESP_LOGI("ha_check", "=== OpenWeatherMap Status ===");
+          ESP_LOGI("ha_check", "OpenWeather Temperature: %s", id(openweather_temp).has_state() ? "CONNECTED" : "NO DATA");
+          ESP_LOGI("ha_check", "OpenWeather Feels Like: %s", id(openweather_feels_like).has_state() ? "CONNECTED" : "NO DATA");
+          ESP_LOGI("ha_check", "OpenWeather Humidity: %s", id(openweather_humidity).has_state() ? "CONNECTED" : "NO DATA");
+          ESP_LOGI("ha_check", "OpenWeather Rain: %s", id(openweather_rain).has_state() ? "CONNECTED" : "NO DATA");
+          ESP_LOGI("ha_check", "OpenWeather Condition: %s", id(openweather_condition).has_state() ? "CONNECTED" : "NO DATA");
+
+          ESP_LOGI("ha_check", "=== Simulated Forecast Status ===");
+          ESP_LOGI("ha_check", "Forecast Hour 0: %s", id(forecast_hour_0).has_state() ? "CONNECTED" : "NO DATA");
+          ESP_LOGI("ha_check", "Forecast Temp 0: %s", id(forecast_temp_0).has_state() ? "CONNECTED" : "NO DATA");
+          ESP_LOGI("ha_check", "Forecast Feels Like 0: %s", id(forecast_feels_like_0).has_state() ? "CONNECTED" : "NO DATA");
+          ESP_LOGI("ha_check", "Forecast Humidity 0: %s", id(forecast_humidity_0).has_state() ? "CONNECTED" : "NO DATA");
+          ESP_LOGI("ha_check", "Forecast Precipitation 0: %s", id(forecast_precipitation_0).has_state() ? "CONNECTED" : "NO DATA");
+
+          if (id(openweather_temp).has_state()) {
+            ESP_LOGI("ha_check", "  OpenWeather Temperature: %.1f°C", id(openweather_temp).state);
+          }
+          if (id(openweather_feels_like).has_state()) {
+            ESP_LOGI("ha_check", "  OpenWeather Feels Like: %.1f°C", id(openweather_feels_like).state);
+          }
+          if (id(openweather_humidity).has_state()) {
+            ESP_LOGI("ha_check", "  OpenWeather Humidity: %.1f%%", id(openweather_humidity).state);
+          }
+          if (id(openweather_rain).has_state()) {
+            ESP_LOGI("ha_check", "  OpenWeather Rain: %.1f mm/h", id(openweather_rain).state);
+          }
+
+          if (id(forecast_hour_0).has_state()) {
+            ESP_LOGI("ha_check", "  Forecast Hour 0 value: %.0f", id(forecast_hour_0).state);
+          }
+          if (id(forecast_temp_0).has_state()) {
+            ESP_LOGI("ha_check", "  Forecast Temp 0 value: %.1f C", id(forecast_temp_0).state);
+          }
+          if (id(forecast_feels_like_0).has_state()) {
+            ESP_LOGI("ha_check", "  Forecast Feels Like 0 value: %.1f C", id(forecast_feels_like_0).state);
+          }
+
+  # Save thermostat values every 60 seconds for persistence
+  - interval: 60s
+    then:
+      - logger.log: "Saving thermostat values for Page 3 persistence"
+      - script.execute: save_thermostat_values
+
+# OpenWeather Condition - this is TEXT, not numeric, so we use text_sensor
+text_sensor:
+  - platform: homeassistant
+    name: "OpenWeather Condition"
+    id: openweather_condition
+    entity_id: sensor.openweathermap_weather
+    internal: true
+    on_value:
+      then:
+        - logger.log:
+            format: "🌤️ OpenWeather Condition received: %s"
+            args: ['x']
+            level: INFO

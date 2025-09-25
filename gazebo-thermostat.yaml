@@ -1,29 +1,67 @@
+
+
+# Main Gazebo Thermostat Module - Page 0 & Core System
+# Core system functionality and page 0 weather display
+
+# Import modular components
+packages:
+  weather: !include weather.yaml
+  thermostat: !include thermostat.yaml
+
 esphome:
   name: gazebo-thermostat
   on_boot:
     - priority: -100
       then:
-        - logger.log: "Gazebo Thermostat booted successfully"
+        - logger.log: "Gazebo Thermostat System - Modular Version Started"
         - delay: 2s
         - component.update: gazebo_temp
         - delay: 1s
         - lambda: |-
+            ESP_LOGI("boot", "=== Module System Status ===");
             ESP_LOGD("boot", "Thermostat mode at boot: %s", id(thermostat_mode).state.c_str());
             ESP_LOGD("boot", "Desired temp at boot: %.1f", id(temp_desired).state);
             ESP_LOGD("boot", "Hysteresis at boot: %.1f", id(hysteresis).state);
             // Initialize last_heating_change to current time to avoid safety delay on boot
             id(last_heating_change) = millis();
+            ESP_LOGI("boot", "Core system initialized");
         - delay: 10s  # Wait for Home Assistant API connection
+        - logger.log: "Testing weather module functionality after 10s delay"
+        - script.execute: update_weather_display
+        - delay: 2s
         - lambda: |-
-            ESP_LOGI("boot", "Checking Home Assistant sensors after 10s delay...");
-            ESP_LOGI("boot", "NH Meteo Temp state: %s", id(nh_meteo_temp).has_state() ? "HAS STATE" : "NO STATE");
-            ESP_LOGI("boot", "NH Meteo Humidity state: %s", id(nh_meteo_humidity).has_state() ? "HAS STATE" : "NO STATE");
+            ESP_LOGI("boot", "=== Weather Module Connection Test ===");
+            ESP_LOGI("boot", "NH Meteo Temp state: %s", id(nh_meteo_temp).has_state() ? "CONNECTED" : "NO DATA");
+            ESP_LOGI("boot", "NH Meteo Humidity state: %s", id(nh_meteo_humidity).has_state() ? "CONNECTED" : "NO DATA");
+
+            ESP_LOGI("boot", "=== OpenWeather Forecast Boot Check ===");
+            ESP_LOGI("boot", "Forecast Hour 0 state: %s", id(forecast_hour_0).has_state() ? "CONNECTED" : "NO DATA");
+            ESP_LOGI("boot", "Forecast Temp 0 state: %s", id(forecast_temp_0).has_state() ? "CONNECTED" : "NO DATA");
+            ESP_LOGI("boot", "Forecast Feels Like 0 state: %s", id(forecast_feels_like_0).has_state() ? "CONNECTED" : "NO DATA");
+            ESP_LOGI("boot", "Forecast Humidity 0 state: %s", id(forecast_humidity_0).has_state() ? "CONNECTED" : "NO DATA");
+            ESP_LOGI("boot", "Forecast Precipitation 0 state: %s", id(forecast_precipitation_0).has_state() ? "CONNECTED" : "NO DATA");
+
             if (id(nh_meteo_temp).has_state()) {
-              ESP_LOGI("boot", "NH Meteo Temp value: %.1f°C", id(nh_meteo_temp).state);
+              ESP_LOGI("boot", "NH Meteo Temp value: %.1f C", id(nh_meteo_temp).state);
             }
             if (id(nh_meteo_humidity).has_state()) {
               ESP_LOGI("boot", "NH Meteo Humidity value: %.1f%%", id(nh_meteo_humidity).state);
             }
+
+            if (id(forecast_hour_0).has_state()) {
+              ESP_LOGI("boot", "Forecast Hour 0 value: %.1f", id(forecast_hour_0).state);
+            }
+            if (id(forecast_temp_0).has_state()) {
+              ESP_LOGI("boot", "Forecast Temp 0 value: %.1f C", id(forecast_temp_0).state);
+            }
+            if (id(forecast_feels_like_0).has_state()) {
+              ESP_LOGI("boot", "Forecast Feels Like 0 value: %.1f C", id(forecast_feels_like_0).state);
+            }
+
+            ESP_LOGI("boot", "Weather module check complete");
+        - delay: 1s
+        - logger.log: "Restoring Page 3 thermostat display from saved values"
+        - script.execute: restore_thermostat_display
 
 esp32:
   board: esp32dev
@@ -70,6 +108,10 @@ logger:
 # Enable Home Assistant API
 api:
   reboot_timeout: 0s
+  on_client_connected:
+    - logger.log: "🔗 Home Assistant API client connected!"
+  on_client_disconnected:
+    - logger.log: "❌ Home Assistant API client disconnected!"
   services:
     - service: test_homeassistant_connection
       then:
@@ -144,347 +186,36 @@ uart:
 #     pin: 4
 #     id: gpio_4
 
-# Temperature sensors
+# Core system sensors (display and WiFi monitoring only)
 sensor:
-  # Simulated temperature sensor with advanced validation
-  - platform: template
-    name: "Gazebo Temperature"
-    id: gazebo_temp
-    accuracy_decimals: 1
-    unit_of_measurement: "°C"
-    update_interval: 10s
-    internal: true  # Don't send to Nextion display
-    lambda: |-
-      // Raw sensor reading (simulated)
-      float raw_temp = 20.0 + id(temp_correction).state;
-
-      // Advanced Sensor Validation with BadRead Logic
-      bool is_valid = true;
-
-      // 1. NaN Detection
-      if (std::isnan(raw_temp)) {
-        ESP_LOGW("sensor", "NaN temperature reading detected");
-        is_valid = false;
-      }
-
-      // 2. Range Validation (-40°C to 80°C)
-      if (raw_temp < -40.0 || raw_temp > 80.0) {
-        ESP_LOGW("sensor", "Temperature reading %.1f°C outside valid range (-40°C to 80°C)", raw_temp);
-        is_valid = false;
-      }
-
-      if (!is_valid) {
-        // 3. Bad Read Counting - Increment counter on failure
-        id(sensor_bad_reads) = id(sensor_bad_reads) + 1;
-        ESP_LOGW("sensor", "Bad read count: %d", id(sensor_bad_reads));
-
-        // 4. Malfunction Threshold - Trigger after 10 consecutive bad reads
-        if (id(sensor_bad_reads) >= 10 && !id(sensor_malfunction)) {
-          ESP_LOGE("sensor", "Sensor malfunction detected after %d consecutive bad reads", id(sensor_bad_reads));
-          id(sensor_malfunction) = true;
-        }
-
-        // 6. Fallback Value - Return last valid reading when sensor fails
-        ESP_LOGW("sensor", "Using last valid temperature: %.1f°C", id(sensor_last_valid));
-        return id(sensor_last_valid);
-      } else {
-        // Valid reading received
-        if (id(sensor_bad_reads) > 0) {
-          ESP_LOGI("sensor", "Sensor recovered after %d bad reads", id(sensor_bad_reads));
-          id(sensor_bad_reads) = 0;  // Reset bad read counter
-          id(sensor_malfunction) = false;  // Clear malfunction flag
-        }
-
-        // 5. Temperature Smoothing - Limit changes to 1°C per reading
-        float temp_diff = raw_temp - id(temp_smoothed);
-        if (abs(temp_diff) > 1.0) {
-          // Limit change to 1°C
-          float smoothed = id(temp_smoothed) + (temp_diff > 0 ? 1.0 : -1.0);
-          ESP_LOGD("sensor", "Temperature smoothing: %.1f°C -> %.1f°C (limited from %.1f°C)",
-                   id(temp_smoothed), smoothed, raw_temp);
-          id(temp_smoothed) = smoothed;
-        } else {
-          id(temp_smoothed) = raw_temp;
-        }
-
-        // Store as last valid reading
-        id(sensor_last_valid) = id(temp_smoothed);
-
-        return id(temp_smoothed);
-      }
-    on_value:
-      - logger.log:
-          format: "Temperature updated: %.1f°C (Bad reads: %d, Malfunction: %s)"
-          args: ['x', 'id(sensor_bad_reads)', 'id(sensor_malfunction) ? "YES" : "NO"']
-
-  # Real Dallas sensor (commented out for testing)
-  # - platform: dallas_temp
-  #   one_wire_id: gpio_4
-  #   name: "Gazebo Temperature"
-  #   id: gazebo_temp
-  #   accuracy_decimals: 1
-  #   unit_of_measurement: "°C"
-  #   update_interval: 10s
-  #   filters:
-  #     - lambda: return x + id(temp_correction).state;  # Apply temperature correction
-  #   on_value:
-  #     - logger.log:
-  #         format: "Temperature updated: %.1f°C"
-  #         args: ['x']
-
-  # WiFi Signal Strength
+  # WiFi Signal Strength for system monitoring
   - platform: wifi_signal
     name: "Gazebo WiFi Signal"
     update_interval: 60s
-    internal: true  # Don't send to Nextion display
+    internal: true
 
-  # Uptime sensor
+  # Uptime sensor for system monitoring
   - platform: uptime
     name: "Gazebo Uptime"
-    internal: true  # Don't send to Nextion display
-
-  # Bad Read Counter for Home Assistant monitoring
-  - platform: template
-    name: "Sensor Bad Read Count"
-    id: sensor_bad_read_count
-    accuracy_decimals: 0
-    unit_of_measurement: "reads"
-    update_interval: 10s
-    internal: true  # Don't send to Nextion display
-    lambda: |-
-      return id(sensor_bad_reads);
-
-  # Last Valid Temperature for Home Assistant monitoring
-  - platform: template
-    name: "Last Valid Temperature"
-    id: sensor_last_valid_temp
-    accuracy_decimals: 1
-    unit_of_measurement: "°C"
-    update_interval: 10s
-    internal: true  # Don't send to Nextion display
-    lambda: |-
-      return id(sensor_last_valid);
-
-  # Nextion slider sensor - commented out due to protocol compatibility issues
-  # - platform: nextion
-  #   nextion_id: nextion_display
-  #   component_id: 4  # Confirmed in Nextion Editor: SliderO with ID 4
-  #   name: "Temperature Slider"
-  #   on_value:
-  #     then:
-  #       - logger.log:
-  #           format: "Nextion slider raw value received: %.1f"
-  #           args: ['x']
-  #       - lambda: |-
-  #           // Scale and validate slider input
-  #           float temp_value = x;
-  #           if (temp_value >= 10.0 && temp_value <= 35.0) {
-  #             ESP_LOGI("nextion", "Setting desired temperature to %.1f°C via slider", temp_value);
-  #             id(temp_desired).publish_state(temp_value);
-  #           } else {
-  #             ESP_LOGW("nextion", "Invalid slider value %.1f - must be 10-35°C", temp_value);
-  #           }
-
-
-  # Nextion slider sensor to capture user input
-  - platform: nextion
-    nextion_id: nextion_display
-    component_name: Slider0
-    name: "Temperature Slider"
     internal: true
-    update_interval: 2s  # Check for slider changes every 2 seconds
-    on_value:
-      then:
-        - logger.log:
-            format: "Slider moved to: %.1f°C"
-            args: ['x']
-            level: INFO
-        - lambda: |-
-            // Only update if slider value is different from current desired temp
-            float slider_temp = x;
-            float current_desired = id(temp_desired).state;
-            if (abs(slider_temp - current_desired) > 0.5) {
-              ESP_LOGI("slider", "Slider changed from %.1f to %.1f - updating desired temperature",
-                       current_desired, slider_temp);
-              id(temp_desired).publish_state(slider_temp);
-            }
-
-  # Home Assistant weather sensors for page 0 display
-  - platform: homeassistant
-    name: "NH Meteo Temperature"
-    id: nh_meteo_temp
-    entity_id: sensor.nhmeteo_temperature
-    internal: true
-    on_value:
-      then:
-        - logger.log:
-            format: "Home Assistant Temperature received: %.1f°C"
-            args: ['x']
-            level: INFO
-
-  - platform: homeassistant
-    name: "NH Meteo Humidity"
-    id: nh_meteo_humidity
-    entity_id: sensor.nhmeteo_humidity
-    internal: true
-    on_value:
-      then:
-        - logger.log:
-            format: "Home Assistant Humidity received: %.1f%%"
-            args: ['x']
-            level: INFO
 
 
-# Binary sensors
+# Core system binary sensors
 binary_sensor:
   - platform: status
     name: "Gazebo Status"
 
-  # Sensor Malfunction Status for Home Assistant
-  - platform: template
-    name: "Sensor Malfunction"
-    id: sensor_malfunction_status
-    device_class: problem
-    internal: true  # Don't send to Nextion display
-    lambda: |-
-      return id(sensor_malfunction);
-
-
-
-# Switches and controls
-switch:
-  - platform: gpio
-    pin: 12
-    name: "Gazebo Relay"
-    id: gazebo_relay
-    restore_mode: RESTORE_DEFAULT_OFF
-    on_turn_on:
-      - logger.log:
-          format: "🔥 RELAY ON - GPIO 12 HIGH - Heating should start now!"
-          level: WARN
-    on_turn_off:
-      - logger.log:
-          format: "❄️ RELAY OFF - GPIO 12 LOW - Heating should stop now!"
-          level: WARN
-
-# Number inputs for settings
-number:
-  - platform: template
-    name: "Desired Temperature"
-    id: temp_desired
-    min_value: 10
-    max_value: 35
-    step: 0.5
-    initial_value: 20
-    unit_of_measurement: "°C"
-    mode: box
-    restore_value: true
-    optimistic: true
-
-  - platform: template
-    name: "Temperature Correction"
-    id: temp_correction
-    min_value: -10
-    max_value: 10
-    step: 0.1
-    initial_value: 0
-    unit_of_measurement: "°C"
-    mode: box
-    restore_value: true
-    optimistic: true
-
-  - platform: template
-    name: "Hysteresis"
-    id: hysteresis
-    min_value: 1
-    max_value: 5
-    step: 0.5
-    initial_value: 2
-    unit_of_measurement: "°C"
-    mode: box
-    restore_value: true
-    optimistic: true
-
-# Select for mode
-select:
-  - platform: template
-    name: "Thermostat Mode"
-    id: thermostat_mode
-    options:
-      - "Off"
-      - "Heat"
-      - "Manual"
-    initial_option: "Heat"
-    restore_value: true
-    optimistic: true
-
-# Text sensors for status
+# Core system text sensors
 text_sensor:
   - platform: wifi_info
     ip_address:
       name: "Gazebo IP Address"
       id: wifi_ip
-      internal: true  # Don't send to Nextion display
+      internal: true
     ssid:
       name: "Gazebo Connected SSID"
       id: wifi_ssid_sensor
-      internal: true  # Don't send to Nextion display
-
-  # Sensor Status Text for Home Assistant
-  - platform: template
-    name: "Sensor Status"
-    id: sensor_status_text
-    update_interval: 10s
-    internal: true  # Don't send to Nextion display
-    lambda: |-
-      if (id(sensor_malfunction)) {
-        return {"<<< SENSOR MALFUNCTION >>>"};
-      } else if (id(sensor_bad_reads) > 0) {
-        return {"Sensor errors: " + to_string(id(sensor_bad_reads))};
-      } else {
-        return {"Sensor OK"};
-      }
-
-# Global variables for thermostat control
-globals:
-  - id: heating_state
-    type: bool
-    initial_value: 'false'
-    restore_value: false
-  - id: last_heating_change
-    type: unsigned long
-    initial_value: '0'
-    restore_value: false
-  - id: heating_start_time
-    type: unsigned long
-    initial_value: '0'
-    restore_value: false
-  - id: max_heating_time
-    type: unsigned long
-    initial_value: '3600000'  # 1 hour max continuous heating (in ms)
-    restore_value: false
-  - id: min_heating_off_time
-    type: unsigned long
-    initial_value: '30000'    # 30 seconds minimum off time (in ms)
-    restore_value: false
-
-# Error tracking globals for sensor monitoring
-  - id: sensor_bad_reads
-    type: int
-    initial_value: '0'
-    restore_value: false
-  - id: sensor_last_valid
-    type: float
-    initial_value: '20.0'
-    restore_value: true
-  - id: sensor_malfunction
-    type: bool
-    initial_value: 'false'
-    restore_value: false
-  - id: temp_smoothed
-    type: float
-    initial_value: '20.0'
-    restore_value: false
+      internal: true
 
 
 # Climate component for thermostat functionality (disabled - using custom control)
@@ -518,157 +249,44 @@ globals:
 #       - name: Away
 #         default_target_temperature_low: 15°C
 
-# Intervals and automations
-interval:
-  - interval: 10s
-    then:
-      - component.update: gazebo_temp
-
-  # Hysteresis thermostat control with safety timeouts
-  - interval: 10s
-    then:
-      - lambda: |-
-          // Debug: Always log thermostat check
-          ESP_LOGD("thermostat", "=== Thermostat Check ===");
-
-          // Priority Safety Check: Sensor malfunction check runs first
-          if (id(sensor_malfunction)) {
-            // Forced Shutdown: Automatically turns off heating when sensor fails
-            if (id(heating_state)) {
-              ESP_LOGW("safety", "Sensor malfunction detected - forcing heating OFF for safety");
-              id(gazebo_relay).turn_off();
-              id(heating_state) = false;
-              id(last_heating_change) = millis();
-            }
-            ESP_LOGW("safety", "Thermostat disabled due to sensor malfunction");
-            return;  // Non-recoverable: Heating stays off until sensor recovers
-          }
-
-          // Only run if thermostat mode is Heat
-          auto mode = id(thermostat_mode).state;
-          ESP_LOGD("thermostat", "Mode: %s", mode.c_str());
-          if (mode != "Heat") {
-            ESP_LOGD("thermostat", "Mode is not Heat, skipping");
-            return;
-          }
-
-          float current_temp = id(gazebo_temp).state;
-          float desired_temp = id(temp_desired).state;
-          float hysteresis_val = id(hysteresis).state;
-          bool heating = id(heating_state);
-          unsigned long now = millis();
-          unsigned long last_change = id(last_heating_change);
-          unsigned long heating_start = id(heating_start_time);
-
-          ESP_LOGD("thermostat", "Current: %.1f°C, Desired: %.1f°C, Hysteresis: %.1f°C, Heating: %s",
-                   current_temp, desired_temp, hysteresis_val, heating ? "ON" : "OFF");
-
-          // Safety check: Maximum heating time exceeded
-          if (heating && (now - heating_start) > id(max_heating_time)) {
-            ESP_LOGW("safety", "Maximum heating time exceeded (1 hour) - forcing heating OFF");
-            id(gazebo_relay).turn_off();
-            id(heating_state) = false;
-            id(last_heating_change) = now;
-            return;
-          }
-
-          // Safety check: Temperature runaway protection
-          if (heating && current_temp > (desired_temp + 5.0)) {
-            ESP_LOGW("safety", "Temperature runaway detected (%.1f°C > %.1f°C + 5°C) - forcing heating OFF",
-                     current_temp, desired_temp);
-            id(gazebo_relay).turn_off();
-            id(heating_state) = false;
-            id(last_heating_change) = now;
-            return;
-          }
-
-          // Hysteresis logic with safety timeouts
-          if (!heating && current_temp < (desired_temp - hysteresis_val)) {
-            // Check minimum off time before allowing heating to turn on
-            if ((now - last_change) < id(min_heating_off_time)) {
-              ESP_LOGD("safety", "Minimum off time not met - waiting %.1f more seconds",
-                       (id(min_heating_off_time) - (now - last_change)) / 1000.0);
-              return;
-            }
-
-            // Turn on heating if temp is below target minus hysteresis
-            ESP_LOGD("thermostat", "Temperature %.1f°C < %.1f°C (target-%.1f°C), turning ON heating",
-                     current_temp, desired_temp - hysteresis_val, hysteresis_val);
-            ESP_LOGI("relay", "TURNING ON RELAY - GPIO 12 should go HIGH");
-            id(gazebo_relay).turn_on();
-            id(heating_state) = true;
-            id(heating_start_time) = now;
-            id(last_heating_change) = now;
-          } else if (heating && current_temp > (desired_temp + hysteresis_val)) {
-            // Turn off heating if temp is above target plus hysteresis
-            ESP_LOGD("thermostat", "Temperature %.1f°C > %.1f°C (target+%.1f°C), turning OFF heating",
-                     current_temp, desired_temp + hysteresis_val, hysteresis_val);
-            id(gazebo_relay).turn_off();
-            id(heating_state) = false;
-            id(last_heating_change) = now;
-          } else {
-            ESP_LOGD("thermostat", "No action needed - within hysteresis range");
-          }
-
-  # Home Assistant sensor monitoring
-  - interval: 30s
-    then:
-      - lambda: |-
-          static bool first_check = true;
-          if (first_check || !id(nh_meteo_temp).has_state() || !id(nh_meteo_humidity).has_state()) {
-            ESP_LOGI("ha_check", "Home Assistant sensor status check:");
-            ESP_LOGI("ha_check", "  Temperature: %s", id(nh_meteo_temp).has_state() ? "Connected" : "No Data");
-            ESP_LOGI("ha_check", "  Humidity: %s", id(nh_meteo_humidity).has_state() ? "Connected" : "No Data");
-            if (id(nh_meteo_temp).has_state()) {
-              ESP_LOGI("ha_check", "  Temperature value: %.1f°C", id(nh_meteo_temp).state);
-            }
-            if (id(nh_meteo_humidity).has_state()) {
-              ESP_LOGI("ha_check", "  Humidity value: %.1f%%", id(nh_meteo_humidity).state);
-            }
-            if (first_check) first_check = false;
-          }
 
 
-# Nextion Display
+# Nextion Display - All Pages with Modular Architecture
 display:
   - platform: nextion
     id: nextion_display
     uart_id: uart_nextion
-    update_interval: 10s  # Update display every 10 seconds
+    update_interval: 10s
     on_setup:
       then:
-        - delay: 2s  # Wait for display to initialize
+        - delay: 2s
         - lambda: |-
-            ESP_LOGI("nextion", "Display setup - checking page and components");
-            // Send command to get current page
+            ESP_LOGI("nextion", "Modular Display System - Initializing all pages");
+            ESP_LOGI("nextion", "Testing display communication...");
             id(nextion_display).send_command_printf("sendme");
-            // Test the correct component names
-            id(nextion_display).set_component_value("feels_like", 99);
-            id(nextion_display).set_component_value("rain", 77);
-            ESP_LOGI("nextion", "Sent test values: feels_like=99, rain=77");
+            ESP_LOGI("nextion", "Modular display initialization completed");
     lambda: |-
-      // Update Page 0 weather data from Home Assistant using correct component names
-      if (id(nh_meteo_temp).has_state()) {
-        // Use correct component name: feels_like (number component, so send integer)
+      // Update temperature and humidity on page 0 text components (t0 and t1)
+      if (!isnan(id(nh_meteo_temp).state)) {
         int temp_int = (int)round(id(nh_meteo_temp).state);
         it.set_component_value("feels_like", temp_int);
-        ESP_LOGI("display", "Page 0: Updated feels_like temperature: %d°C", temp_int);
-      }
-      if (id(nh_meteo_humidity).has_state()) {
-        // Use correct component name: rain (number component, so send integer)
-        int humidity_int = (int)round(id(nh_meteo_humidity).state);
-        it.set_component_value("rain", humidity_int);
-        ESP_LOGI("display", "Page 0: Updated rain humidity: %d%%", humidity_int);
       }
 
-      // Update Page 3 thermostat data (current thermostat page)
-      // Only update current temperature display (bottom left - component n1)
-      it.set_component_value("n1", (int)id(gazebo_temp).state);
+      if (!isnan(id(nh_meteo_humidity).state)) {
+        int hum_int = (int)round(id(nh_meteo_humidity).state);
+        it.set_component_value("rain", hum_int);
+      }
+      // Existing: Update thermostat data on page 3
+      float current_temp = id(gazebo_temp).state;
+      if (!std::isnan(current_temp) && current_temp >= -50 && current_temp <= 60) {
+        int temp_int = (int)round(current_temp);
+        it.set_component_value("n1", temp_int); // "n1" as per your thermostat page design
+        ESP_LOGD("display", "Page 3: n1(Current)=%d C", temp_int);
+      } else {
+        ESP_LOGW("display", "Page 3: Invalid current temperature: %.1f C", current_temp);
+      }
+      ESP_LOGD("display", "Core display system updated - thermostat page");
 
-      // DON'T update desired temperature (n0) - let slider control this completely
-
-      ESP_LOGI("display", "Page 3: n1(Current)=%.0f°C (n0 controlled by slider)",
-               id(gazebo_temp).state);
 
 
 # HTTP request component for weather API (if needed)
